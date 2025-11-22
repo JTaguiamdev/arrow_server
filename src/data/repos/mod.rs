@@ -1,2 +1,2 @@
-pub mod traits;
 mod implementors;
+pub mod traits;

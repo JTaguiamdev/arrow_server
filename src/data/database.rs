@@ -1,18 +1,24 @@
-use std::env;
 use diesel_async::AsyncMysqlConnection;
-use diesel_async::pooled_connection::{deadpool, AsyncDieselConnectionManager};
 use diesel_async::pooled_connection::deadpool::{Object, Pool};
+use diesel_async::pooled_connection::{AsyncDieselConnectionManager, deadpool};
 use dotenvy::dotenv;
 use once_cell::sync::Lazy;
+use std::env;
 
-pub struct Database { pool: Pool<AsyncMysqlConnection> }
+pub struct Database {
+    pool: Pool<AsyncMysqlConnection>,
+}
 
 impl Database {
     pub async fn new() -> Self {
-        Database { pool: DB_POOL.clone() }
+        Database {
+            pool: DB_POOL.clone(),
+        }
     }
 
-    pub async fn get_connection(&self) -> Result<Object<AsyncMysqlConnection>, deadpool::PoolError> {
+    pub async fn get_connection(
+        &self,
+    ) -> Result<Object<AsyncMysqlConnection>, deadpool::PoolError> {
         self.pool.get().await
     }
 }
