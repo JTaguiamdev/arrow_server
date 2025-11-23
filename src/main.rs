@@ -1,4 +1,4 @@
 #[tokio::main]
 async fn main() {
-    println!("Hello, world!");
+    arrow_server_lib::api::start().await;
 }
