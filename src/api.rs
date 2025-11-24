@@ -1,13 +1,14 @@
-use std::net::SocketAddr;
+use crate::controllers::user_controller::{login, register_user};
 use axum::Router;
 use axum::routing::{get, post};
+use std::net::SocketAddr;
 use tokio::net::TcpListener;
-use crate::controllers::user_controller::{login, register_user};
 
 // TODO: Implement the API module
+// TODO: Add swagger documentation
 pub async fn start() {
     let router = Router::new()
-        .route("/" , get(|| async { "Arrow Server API is running!" }))
+        .route("/", get(|| async { "Arrow Server API is running!" }))
         .route("/users/register", post(register_user))
         .route("/users/login", post(login))
         .with_state::<()>(());
