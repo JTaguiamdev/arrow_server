@@ -16,7 +16,7 @@ async fn setup() -> Result<(), result::Error> {
 
     Ok(())
 }
-
+// TODO: Implement tests for user repository methods
 #[tokio::test]
 #[serial_test::serial]
 async fn test_create_user() {

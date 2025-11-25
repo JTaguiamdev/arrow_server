@@ -8,9 +8,9 @@ use tokio::net::TcpListener;
 // TODO: Add swagger documentation
 pub async fn start() {
     let router = Router::new()
-        .route("/", get(|| async { "Arrow Server API is running!" }))
-        .route("/users/register", post(register_user))
-        .route("/users/login", post(login))
+        .route("/api", get(|| async { "Arrow Server API is running!" }))
+        .route("/api/v1/users/register", post(register_user))
+        .route("/api/v1/users/login", post(login))
         .with_state::<()>(());
 
     let listener = TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 3000)))
