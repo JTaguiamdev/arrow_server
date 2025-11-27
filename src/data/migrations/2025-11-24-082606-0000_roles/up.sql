@@ -1,7 +1,7 @@
 -- Your SQL goes here
 CREATE TABLE `user_roles` (
     role_id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
-    user_id INT NOT NULL UNIQUE,
+    user_id INT,
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
