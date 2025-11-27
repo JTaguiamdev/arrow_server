@@ -1,2 +1,2 @@
 # ARROW Server
-ARROW (Advanced Rust Restaurant Order Workflow) Server is a high-performance backend server designed to streamline restaurant operations. Built with Rust, it leverages the language's safety and concurrency features to deliver a robust and efficient solution for managing orders, inventory, and customer interactions.
+ARROW (Asynchronous Rust Restaurant Order Workflow) Server is a high-performance backend server designed to streamline restaurant operations. Built with Rust, it leverages the language's safety and concurrency features to deliver a robust and efficient solution for managing orders, inventory, and customer interactions.
