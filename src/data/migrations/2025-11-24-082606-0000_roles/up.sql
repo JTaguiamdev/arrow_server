@@ -6,5 +6,6 @@ CREATE TABLE `user_roles` (
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (`user_id`) REFERENCES users(`user_id`)
+    FOREIGN KEY (`user_id`) REFERENCES users(`user_id`),
+    UNIQUE (`user_id`, `role_id`) -- Ensure a user cannot have the same role multiple times
 );
