@@ -1,13 +1,13 @@
 use arrow_server_lib::data::database::*;
+use arrow_server_lib::data::models::schema::order_products::dsl::order_products;
+use arrow_server_lib::data::models::schema::orders::dsl::orders;
+use arrow_server_lib::data::models::schema::products::dsl::products;
 use arrow_server_lib::data::models::user::{NewUser, UpdateUser};
 use arrow_server_lib::data::repos::implementors::user_repo::UserRepo;
 use arrow_server_lib::data::repos::traits::repository::Repository;
 use arrow_server_lib::services::auth_service::AuthService;
 use diesel::result;
 use diesel_async::RunQueryDsl;
-use arrow_server_lib::data::models::schema::order_products::dsl::order_products;
-use arrow_server_lib::data::models::schema::orders::dsl::orders;
-use arrow_server_lib::data::models::schema::products::dsl::products;
 
 async fn setup() -> Result<(), result::Error> {
     let db = Database::new().await;
@@ -17,8 +17,8 @@ async fn setup() -> Result<(), result::Error> {
         .await
         .expect("Failed to get a database connection");
 
-    use arrow_server_lib::data::models::schema::users::dsl::*;
     use arrow_server_lib::data::models::schema::user_roles::dsl::*;
+    use arrow_server_lib::data::models::schema::users::dsl::*;
 
     diesel::delete(user_roles).execute(&mut conn).await?;
     diesel::delete(order_products).execute(&mut conn).await?;

@@ -1,4 +1,7 @@
 use arrow_server_lib::data::database::*;
+use arrow_server_lib::data::models::schema::order_products::dsl::order_products;
+use arrow_server_lib::data::models::schema::orders::dsl::orders;
+use arrow_server_lib::data::models::schema::products::dsl::products;
 use arrow_server_lib::data::models::user::{NewUser, User};
 use arrow_server_lib::data::models::user_roles::{NewUserRole, RolePermissions, UpdateUserRole};
 use arrow_server_lib::data::repos::implementors::user_repo::UserRepo;
@@ -7,9 +10,6 @@ use arrow_server_lib::data::repos::traits::repository::Repository;
 use arrow_server_lib::services::auth_service::AuthService;
 use diesel::result;
 use diesel_async::RunQueryDsl;
-use arrow_server_lib::data::models::schema::order_products::dsl::order_products;
-use arrow_server_lib::data::models::schema::orders::dsl::orders;
-use arrow_server_lib::data::models::schema::products::dsl::products;
 
 async fn setup() -> Result<(), result::Error> {
     let db = Database::new().await;
@@ -406,11 +406,26 @@ async fn test_role_permissions_enum_conversion() {
     assert_eq!(RolePermissions::Admin.as_str(), "ADMIN");
 
     // Test from_str
-    assert_eq!(RolePermissions::from_str("READ"), Some(RolePermissions::Read));
-    assert_eq!(RolePermissions::from_str("read"), Some(RolePermissions::Read));
-    assert_eq!(RolePermissions::from_str("WRITE"), Some(RolePermissions::Write));
-    assert_eq!(RolePermissions::from_str("DELETE"), Some(RolePermissions::Delete));
-    assert_eq!(RolePermissions::from_str("ADMIN"), Some(RolePermissions::Admin));
+    assert_eq!(
+        RolePermissions::from_str("READ"),
+        Some(RolePermissions::Read)
+    );
+    assert_eq!(
+        RolePermissions::from_str("read"),
+        Some(RolePermissions::Read)
+    );
+    assert_eq!(
+        RolePermissions::from_str("WRITE"),
+        Some(RolePermissions::Write)
+    );
+    assert_eq!(
+        RolePermissions::from_str("DELETE"),
+        Some(RolePermissions::Delete)
+    );
+    assert_eq!(
+        RolePermissions::from_str("ADMIN"),
+        Some(RolePermissions::Admin)
+    );
     assert_eq!(RolePermissions::from_str("invalid"), None);
 }
 

@@ -38,7 +38,7 @@ pub async fn register_user(Json(new_user): Json<NewUserDTO>) -> impl IntoRespons
                 .status(StatusCode::CREATED)
                 .body(Body::from("User created"))
                 .unwrap()
-        },
+        }
         Err(e) => {
             eprintln!("Error creating user: {}", e);
             Response::builder()
