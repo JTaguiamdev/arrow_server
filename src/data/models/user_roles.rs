@@ -4,6 +4,7 @@ use crate::data::models::user::User;
 use diesel::deserialize::FromSqlRow;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
+use std::str::FromStr;
 
 #[derive(Selectable, Queryable, Identifiable, Associations, PartialEq, Debug)]
 #[diesel(table_name = user_roles)]
@@ -24,9 +25,7 @@ pub struct UserRole {
 impl UserRole {
     /// Get the permissions as a RolePermissions enum
     pub fn get_permissions(&self) -> Option<RolePermissions> {
-        self.permissions
-            .as_ref()
-            .and_then(|s| RolePermissions::from_str(&s.0))
+        self.permissions.as_ref().and_then(|s| s.0.parse().ok())
     }
 }
 
@@ -67,7 +66,7 @@ impl PermissionString {
     }
 
     pub fn as_permission(&self) -> Option<RolePermissions> {
-        RolePermissions::from_str(&self.0)
+        RolePermissions::from_str(&self.0).ok()
     }
 }
 
@@ -88,8 +87,12 @@ impl RolePermissions {
             RolePermissions::Admin => "ADMIN",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for RolePermissions {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().as_str() {
             "READ" => Some(RolePermissions::Read),
             "WRITE" => Some(RolePermissions::Write),
@@ -97,5 +100,6 @@ impl RolePermissions {
             "ADMIN" => Some(RolePermissions::Admin),
             _ => None,
         }
+        .ok_or(())
     }
 }

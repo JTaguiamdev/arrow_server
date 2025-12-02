@@ -10,6 +10,7 @@ use arrow_server_lib::data::repos::traits::repository::Repository;
 use arrow_server_lib::services::auth_service::AuthService;
 use diesel::result;
 use diesel_async::RunQueryDsl;
+use std::str::FromStr;
 
 async fn setup() -> Result<(), result::Error> {
     let db = Database::new().await;
@@ -407,26 +408,26 @@ async fn test_role_permissions_enum_conversion() {
 
     // Test from_str
     assert_eq!(
-        RolePermissions::from_str("READ"),
+        RolePermissions::from_str("READ").ok(),
         Some(RolePermissions::Read)
     );
     assert_eq!(
-        RolePermissions::from_str("read"),
+        RolePermissions::from_str("read").ok(),
         Some(RolePermissions::Read)
     );
     assert_eq!(
-        RolePermissions::from_str("WRITE"),
+        RolePermissions::from_str("WRITE").ok(),
         Some(RolePermissions::Write)
     );
     assert_eq!(
-        RolePermissions::from_str("DELETE"),
+        RolePermissions::from_str("DELETE").ok(),
         Some(RolePermissions::Delete)
     );
     assert_eq!(
-        RolePermissions::from_str("ADMIN"),
+        RolePermissions::from_str("ADMIN").ok(),
         Some(RolePermissions::Admin)
     );
-    assert_eq!(RolePermissions::from_str("invalid"), None);
+    assert_eq!(RolePermissions::from_str("invalid").ok(), None);
 }
 
 #[tokio::test]
