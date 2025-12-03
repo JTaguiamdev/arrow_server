@@ -5,7 +5,7 @@ use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use tokio::task;
 
 pub struct AuthService;
-// TODO: Test this service
+
 impl AuthService {
     pub fn new() -> Self {
         AuthService

@@ -1,6 +1,4 @@
-pub struct RoleBuilder {
-
-}
+pub struct RoleBuilder {}
 
 impl RoleBuilder {
     pub fn new() -> Self {

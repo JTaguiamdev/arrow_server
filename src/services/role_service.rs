@@ -25,7 +25,11 @@ impl RoleService {
         use crate::data::repos::implementors::user_role_repo::UserRoleRepo;
 
         let repo = UserRoleRepo::new();
-        if let Some(role) = repo.get_by_id(role_id).await.map_err(|_| RoleError::RoleNotFound)? {
+        if let Some(role) = repo
+            .get_by_id(role_id)
+            .await
+            .map_err(|_| RoleError::RoleNotFound)?
+        {
             return if let Some(perm_str) = {
                 match role.permissions {
                     Some(p) => Some(p.as_permission()),
@@ -33,7 +37,9 @@ impl RoleService {
                 }
             } {
                 Ok(perm_str == Option::from(required_permission))
-            } else { Err(RoleError::PermissionDenied) }
+            } else {
+                Err(RoleError::PermissionDenied)
+            };
         }
         Ok(false)
     }
@@ -46,7 +52,10 @@ impl RoleService {
         use crate::data::repos::implementors::user_role_repo::UserRoleRepo;
 
         let repo = UserRoleRepo::new();
-        let role = repo.get_by_name(role_name).await.map_err(|_| RoleError::RoleNotFound)?;
+        let role = repo
+            .get_by_name(role_name)
+            .await
+            .map_err(|_| RoleError::RoleNotFound)?;
 
         if let Some(role) = role {
             let new_user_role = NewUserRole {
@@ -54,7 +63,9 @@ impl RoleService {
                 name: role.name.as_str(),
                 description: role.description.as_deref(),
             };
-            repo.add(new_user_role).await.map_err(|_| RoleError::RoleAssignmentFailed)?;
+            repo.add(new_user_role)
+                .await
+                .map_err(|_| RoleError::RoleAssignmentFailed)?;
             Ok(())
         } else {
             Err(RoleError::RoleNotFound)
@@ -75,8 +86,14 @@ impl RoleService {
             name,
             description,
         };
-        repo.add(new_role).await.map_err(|_| RoleError::RoleCreationFailed)?;
-        let new_role = match repo.get_by_name(name).await.map_err(|_| RoleError::RoleNotFound)? {
+        repo.add(new_role)
+            .await
+            .map_err(|_| RoleError::RoleCreationFailed)?;
+        let new_role = match repo
+            .get_by_name(name)
+            .await
+            .map_err(|_| RoleError::RoleNotFound)?
+        {
             Some(r) => r,
             None => return Err(RoleError::RoleNotFound),
         };
@@ -96,7 +113,11 @@ impl RoleService {
 
         let repo = UserRoleRepo::new();
 
-        let role = match repo.get_by_name(role_name).await.map_err(|_| RoleError::RoleNotFound)? {
+        let role = match repo
+            .get_by_name(role_name)
+            .await
+            .map_err(|_| RoleError::RoleNotFound)?
+        {
             Some(r) => r,
             None => return Err(RoleError::RoleNotFound),
         };
@@ -106,8 +127,6 @@ impl RoleService {
             .map_err(|_| RoleError::PermissionAssignmentFailed)?;
         Ok(())
     }
-
-
     // Additional role management methods would go here
 }
 
