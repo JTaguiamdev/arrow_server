@@ -1,5 +1,5 @@
-use crate::controllers::dto::login_dto::LoginDTO;
-use crate::controllers::dto::user_dto::NewUserDTO;
+use crate::api::controllers::dto::login_dto::LoginDTO;
+use crate::api::controllers::dto::user_dto::NewUserDTO;
 use crate::data::models::user::NewUser;
 use crate::data::repos::implementors::user_repo::UserRepo;
 use crate::data::repos::traits::repository::Repository;
@@ -85,7 +85,11 @@ pub async fn login(Json(login_user): Json<LoginDTO>) -> impl IntoResponse {
 // TODO(optional): Add rate limiting and input validation
 // TODO: Implement get user by ID controller
 // TODO: Implement get all users controller
-/// Function to get user by the id
+/// Function to get all users
+pub async fn get_all_users() {
+    
+}
+/// Function to get user by the name
 pub async fn get_user() {
     unimplemented!()
 }
