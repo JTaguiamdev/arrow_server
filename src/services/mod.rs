@@ -1,5 +1,5 @@
 pub mod auth_service;
 pub mod errors;
-mod order_service;
-mod product_service;
-mod role_service;
+pub mod order_service;
+pub mod product_service;
+pub mod role_service;
