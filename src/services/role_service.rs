@@ -1,8 +1,118 @@
+use crate::data::models::user_roles::*;
+use crate::data::repos::traits::repository::Repository;
+use crate::services::errors::RoleError;
+
 // ROLE MANAGEMENT LOGIC GOES HERE
 // Possible permissions: Read, Write, Delete, Admin
 // Admin could add other roles and assign permissions
-// Write could only modify content within their own tables
+// Write could only modify and add content within their own tables
 // Read could only view content
 // Delete could remove content but not modify structure
 // Each role should have specific permissions associated with it
 // Users can not be assigned multiple roles
+pub struct RoleService {}
+
+impl RoleService {
+    pub fn new() -> Self {
+        RoleService {}
+    }
+
+    pub async fn check_permission(
+        &self,
+        role_id: i32,
+        required_permission: RolePermissions,
+    ) -> Result<bool, RoleError> {
+        use crate::data::repos::implementors::user_role_repo::UserRoleRepo;
+
+        let repo = UserRoleRepo::new();
+        if let Some(role) = repo.get_by_id(role_id).await.map_err(|_| RoleError::RoleNotFound)? {
+            return if let Some(perm_str) = {
+                match role.permissions {
+                    Some(p) => Some(p.as_permission()),
+                    None => None,
+                }
+            } {
+                Ok(perm_str == Option::from(required_permission))
+            } else { Err(RoleError::PermissionDenied) }
+        }
+        Ok(false)
+    }
+
+    pub async fn assign_role_to_user(
+        &self,
+        user_id: i32,
+        role_name: &str,
+    ) -> Result<(), RoleError> {
+        use crate::data::repos::implementors::user_role_repo::UserRoleRepo;
+
+        let repo = UserRoleRepo::new();
+        let role = repo.get_by_name(role_name).await.map_err(|_| RoleError::RoleNotFound)?;
+
+        if let Some(role) = role {
+            let new_user_role = NewUserRole {
+                user_id,
+                name: role.name.as_str(),
+                description: role.description.as_deref(),
+            };
+            repo.add(new_user_role).await.map_err(|_| RoleError::RoleAssignmentFailed)?;
+            Ok(())
+        } else {
+            Err(RoleError::RoleNotFound)
+        }
+    }
+
+    pub async fn create_role(
+        &self,
+        name: &str,
+        description: Option<&str>,
+        permissions: RolePermissions,
+    ) -> Result<(), RoleError> {
+        use crate::data::repos::implementors::user_role_repo::UserRoleRepo;
+
+        let repo = UserRoleRepo::new();
+        let new_role = NewUserRole {
+            user_id: 0, // System role, not assigned to a user yet
+            name,
+            description,
+        };
+        repo.add(new_role).await.map_err(|_| RoleError::RoleCreationFailed)?;
+        let new_role = match repo.get_by_name(name).await.map_err(|_| RoleError::RoleNotFound)? {
+            Some(r) => r,
+            None => return Err(RoleError::RoleNotFound),
+        };
+
+        repo.set_permissions(new_role.role_id, permissions)
+            .await
+            .map_err(|_| RoleError::PermissionAssignmentFailed)?;
+        Ok(())
+    }
+
+    pub async fn set_permission_to_role(
+        &self,
+        role_name: &str,
+        permission: RolePermissions,
+    ) -> Result<(), RoleError> {
+        use crate::data::repos::implementors::user_role_repo::UserRoleRepo;
+
+        let repo = UserRoleRepo::new();
+
+        let role = match repo.get_by_name(role_name).await.map_err(|_| RoleError::RoleNotFound)? {
+            Some(r) => r,
+            None => return Err(RoleError::RoleNotFound),
+        };
+
+        repo.set_permissions(role.role_id, permission)
+            .await
+            .map_err(|_| RoleError::PermissionAssignmentFailed)?;
+        Ok(())
+    }
+
+
+    // Additional role management methods would go here
+}
+
+impl Default for RoleService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
