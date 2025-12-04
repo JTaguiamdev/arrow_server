@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "ARROW_SERVER",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

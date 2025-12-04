@@ -1,0 +1,21 @@
+meta {
+  name: REMOVE PERMISSION
+  type: http
+  seq: 13
+}
+
+patch {
+  url: http://127.0.0.1:3000/api/v1/roles/1/delete_permission
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "permission": "read:users"
+  }
+}

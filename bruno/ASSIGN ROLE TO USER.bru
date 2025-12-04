@@ -1,0 +1,22 @@
+meta {
+  name: ASSIGN ROLE TO USER
+  type: http
+  seq: 12
+}
+
+post {
+  url: http://127.0.0.1:3000/api/v1/roles/assign
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "testuser",
+    "role_name": "admin"
+  }
+}
