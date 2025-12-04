@@ -75,19 +75,13 @@ impl OrderService {
     /// Gets all orders for a specific user (requires READ permission or Admin)
     pub async fn get_user_orders(
         &self,
-        requesting_user_id: i32,
         target_user_id: i32,
         role_id: i32,
     ) -> Result<Option<Vec<Order>>, OrderServiceError> {
         let is_admin = self.has_permission(role_id, RolePermissions::Admin).await?;
         let has_read = self.has_permission(role_id, RolePermissions::Read).await?;
 
-        if !has_read && !is_admin {
-            return Err(OrderServiceError::PermissionDenied);
-        }
-
-        // Non-admins can only view their own orders
-        if !is_admin && requesting_user_id != target_user_id {
+        if !has_read || !is_admin {
             return Err(OrderServiceError::PermissionDenied);
         }
 
@@ -97,12 +91,12 @@ impl OrderService {
             .map_err(|_| OrderServiceError::DatabaseError)
     }
 
-    /// Gets all orders (Admin only)
+    /// Gets all orders (READ or ADMIN permission required)
     pub async fn get_all_orders(
         &self,
         role_id: i32,
     ) -> Result<Option<Vec<Order>>, OrderServiceError> {
-        if !self.has_permission(role_id, RolePermissions::Admin).await? {
+        if !self.has_permission(role_id, RolePermissions::Admin).await? || !self.has_permission(role_id, RolePermissions::Read).await? {
             return Err(OrderServiceError::PermissionDenied);
         }
 
@@ -112,17 +106,16 @@ impl OrderService {
             .map_err(|_| OrderServiceError::DatabaseError)
     }
 
-    /// Gets an order by ID
+    /// Gets an order by ID (must have READ permission or be Admin)
     pub async fn get_order_by_id(
         &self,
-        requesting_user_id: i32,
         order_id: i32,
         role_id: i32,
     ) -> Result<Option<Order>, OrderServiceError> {
         let is_admin = self.has_permission(role_id, RolePermissions::Admin).await?;
         let has_read = self.has_permission(role_id, RolePermissions::Read).await?;
 
-        if !has_read && !is_admin {
+        if !has_read || !is_admin {
             return Err(OrderServiceError::PermissionDenied);
         }
 
@@ -132,44 +125,24 @@ impl OrderService {
             .await
             .map_err(|_| OrderServiceError::DatabaseError)?;
 
-        // Non-admins can only view their own orders
-        if let Some(ref o) = order {
-            if !is_admin && o.user_id != requesting_user_id {
-                return Err(OrderServiceError::PermissionDenied);
-            }
-        }
-
         Ok(order)
     }
 
-    /// Cancels an order (user can cancel their own pending orders, admin can cancel any)
+    /// Cancels an order (must have WRITE permission or be Admin)
     pub async fn cancel_order(
         &self,
         requesting_user_id: i32,
         order_id: i32,
         role_id: i32,
     ) -> Result<(), OrderServiceError> {
-        let is_admin = self.has_permission(role_id, RolePermissions::Admin).await?;
+        let has_permission = self.has_permission(role_id, RolePermissions::Admin).await? &&
+            self.has_permission(role_id, RolePermissions::Write).await?;
 
-        let repo = OrderRepo::new();
-        let order = repo
-            .get_by_id(order_id)
-            .await
-            .map_err(|_| OrderServiceError::DatabaseError)?
-            .ok_or(OrderServiceError::OrderNotFound)?;
-
-        // Check ownership for non-admins
-        if !is_admin && order.user_id != requesting_user_id {
+        if !has_permission {
             return Err(OrderServiceError::PermissionDenied);
         }
 
-        // Users can only cancel pending orders
-        if !is_admin {
-            let current_status = order.status.as_ref().and_then(|s| OrderStatus::from_str(s));
-            if current_status != Some(OrderStatus::Pending) {
-                return Err(OrderServiceError::InvalidStatusTransition);
-            }
-        }
+        let repo = OrderRepo::new();
 
         let update = UpdateOrder {
             user_id: None,
@@ -184,14 +157,14 @@ impl OrderService {
             .map_err(|_| OrderServiceError::OrderUpdateFailed)
     }
 
-    /// Updates order status (Admin only)
+    /// Updates order status
     pub async fn update_order_status(
         &self,
         order_id: i32,
         new_status: OrderStatus,
         role_id: i32,
     ) -> Result<(), OrderServiceError> {
-        if !self.has_permission(role_id, RolePermissions::Admin).await? {
+        if !self.has_permission(role_id, RolePermissions::Write).await? {
             return Err(OrderServiceError::PermissionDenied);
         }
 
@@ -216,13 +189,13 @@ impl OrderService {
             .map_err(|_| OrderServiceError::OrderUpdateFailed)
     }
 
-    /// Gets orders by status (Admin only)
+    /// Gets orders by status
     pub async fn get_orders_by_status(
         &self,
         status: OrderStatus,
         role_id: i32,
     ) -> Result<Option<Vec<Order>>, OrderServiceError> {
-        if !self.has_permission(role_id, RolePermissions::Admin).await? {
+        if !self.has_permission(role_id, RolePermissions::Read).await? {
             return Err(OrderServiceError::PermissionDenied);
         }
 
@@ -232,9 +205,9 @@ impl OrderService {
             .map_err(|_| OrderServiceError::DatabaseError)
     }
 
-    /// Deletes an order (Admin only)
+    /// Deletes an order
     pub async fn delete_order(&self, order_id: i32, role_id: i32) -> Result<(), OrderServiceError> {
-        if !self.has_permission(role_id, RolePermissions::Admin).await? {
+        if !self.has_permission(role_id, RolePermissions::Delete).await? {
             return Err(OrderServiceError::PermissionDenied);
         }
 
