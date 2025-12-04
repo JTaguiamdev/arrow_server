@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct RoleDTO {
     pub name: String,
     pub description: Option<String>,
-    pub permissions: String,
+    pub permissions: Vec<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }

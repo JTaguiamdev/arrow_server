@@ -81,10 +81,13 @@ pub async fn login(Json(login_user): Json<LoginDTO>) -> impl IntoResponse {
 }
 
 // TODO: Implement user update and delete controllers
+// TODO: Implement get user by name. Uses query params
 // TODO(optional): Implement JWT authentication for protected routes
 // TODO(optional): Add rate limiting and input validation
 // TODO: Implement get user by ID controller
 // TODO: Implement get all users controller
+// NOTE: include the user's role in the response
+// NOTE: Store DTOs as structs in /src/api/controllers/dto with their mappers in /src/utils/mappers.rs
 /// Function to get all users
 pub async fn get_all_users() {}
 /// Function to get user by the name

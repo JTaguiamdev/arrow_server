@@ -15,18 +15,24 @@ Arrow Server (Asynchronous Rust Restaurant Order Workflow) is a REST API for res
 
 ```
 src/
-├── api.rs              # Axum router setup, route definitions
-├── controllers/        # HTTP handlers (receive DTOs, return responses)
-│   └── dto/           # Request/response data transfer objects
-├── services/          # Business logic (auth, validation)
+├── api/
+│   ├── server.rs       # Server setup (start function, router configuration)
+│   ├── routes/         # Route definitions (grouped by domain)
+│   ├── controllers/    # HTTP handlers (receive DTOs, return responses)
+│   │   └── dto/        # Request/response data transfer objects
+│   ├── extractors.rs   # Axum extractors
+│   └── errors.rs       # API-specific errors
+├── services/           # Business logic (auth, validation, hashing)
 ├── data/
-│   ├── database.rs    # Connection pool (Lazy static, deadpool)
-│   ├── models/        # Diesel ORM structs (Queryable, Insertable)
+│   ├── database.rs     # Connection pool (Lazy static, deadpool)
+│   ├── models/         # Diesel ORM structs (Queryable, Insertable)
 │   ├── repos/
-│   │   ├── traits/    # Repository trait definitions
-│   │   └── implementors/  # Concrete repo implementations
-│   └── migrations/    # Diesel SQL migrations
-└── utils/mappers.rs   # DTO <-> Model conversions via From trait
+│   │   ├── traits/     # Repository trait definitions
+│   │   └── implementors/ # Concrete repo implementations
+│   └── migrations/     # Diesel SQL migrations
+├── builders/           # Builder pattern implementations
+└── utils/
+    └── mappers.rs      # DTO <-> Model conversions via From trait
 ```
 
 ## Key Patterns
@@ -55,7 +61,7 @@ Each entity in `src/data/models/` needs three structs:
 - `UpdateXxx<'a>`: For updates with `#[derive(AsChangeset)]`
 
 ### DTOs and Mappers
-- DTOs in `src/controllers/dto/` use `#[derive(Serialize, Deserialize)]`
+- DTOs in `src/api/controllers/dto/` use `#[derive(Serialize, Deserialize)]`
 - Implement `From<&'a XxxDTO> for NewXxx<'a>` in `src/utils/mappers.rs`
 
 ### Database Access Pattern
@@ -64,6 +70,7 @@ let db = Database::new().await;
 let mut conn = db.get_connection().await.map_err(/* ... */)?;
 // Use diesel async operations with &mut conn
 ```
+Note: `Database::new()` is cheap as it clones a handle to a global `Lazy` static pool.
 
 ### Transaction Pattern (Critical for Diesel Async)
 All write operations (insert/update/delete) MUST wrap in transactions with `.scope_boxed()`:
@@ -81,6 +88,10 @@ conn.transaction(|connection| {
 })
 .await
 ```
+
+### Service Layer
+- Services (e.g., `AuthService`) are stateless structs.
+- CPU-intensive tasks (like password hashing) should be offloaded using `tokio::task::spawn_blocking`.
 
 ## Commands
 
@@ -116,7 +127,7 @@ cargo test -- --test-threads=1           # Serial execution (use `#[serial_test:
 1. **New table**: Create migration → run → regenerate schema
 2. **New model**: Add to `src/data/models/` with three struct variants
 3. **New repo**: Add trait impl in `implementors/`, wire in `mod.rs`
-4. **New endpoint**: Controller in `controllers/`, register route in `api.rs`
+4. **New endpoint**: Controller in `api/controllers/`, register route in `api/routes/`
 5. **Wire modules**: Update `mod.rs` files in each directory
 
 ## Current TODOs (from codebase)

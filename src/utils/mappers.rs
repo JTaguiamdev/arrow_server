@@ -42,7 +42,7 @@ impl From<UserRole> for RoleDTO {
     fn from(user_role: UserRole) -> Self {
         RoleDTO {
             name: user_role.name.clone(),
-            permissions: user_role.get_permissions().unwrap().as_str().into(),
+            permissions: user_role.get_permissions().unwrap().as_str().into(), // FIXME: This should contain a vector of permissions
             description: user_role.description,
             created_at: user_role
                 .created_at
