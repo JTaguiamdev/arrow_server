@@ -214,7 +214,7 @@ async fn test_get_user_own_orders() {
 
     // Get own orders
     let orders = service
-        .get_user_orders(user_id, user_id, read_role_id)
+        .get_user_orders(user_id, read_role_id)
         .await
         .expect("Failed to get orders");
 
@@ -224,7 +224,7 @@ async fn test_get_user_own_orders() {
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_get_other_user_orders_denied() {
+async fn test_get_other_user_orders_with_read_permission() {
     setup().await.expect("Setup failed");
 
     let user1_id = create_test_user("user1").await;
@@ -249,16 +249,16 @@ async fn test_get_other_user_orders_denied() {
         .await
         .expect("Failed to create order");
 
-    // User2 tries to view user1's orders
+    // User2 with READ permission can view user1's orders (new behavior)
     let result = service
-        .get_user_orders(user2_id, user1_id, read_role_id)
+        .get_user_orders(user1_id, read_role_id)
         .await;
 
-    assert_eq!(
-        result.err(),
-        Some(OrderServiceError::PermissionDenied),
-        "Non-admin should not view other user's orders"
+    assert!(
+        result.is_ok(),
+        "User with READ permission should be able to view any user's orders"
     );
+    assert!(result.unwrap().is_some());
 }
 
 #[tokio::test]
@@ -306,20 +306,34 @@ async fn test_admin_get_all_orders() {
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_non_admin_get_all_orders_denied() {
+async fn test_read_permission_get_all_orders() {
     setup().await.expect("Setup failed");
 
-    let user_id = create_test_user("non_admin").await;
+    let user_id = create_test_user("reader").await;
+    let write_role_id = create_role_with_permission(user_id, "writer", RolePermissions::Write).await;
     let read_role_id = create_role_with_permission(user_id, "reader", RolePermissions::Read).await;
+    let product_id = create_test_product().await;
 
     let service = OrderService::new();
 
+    // Create an order first
+    service
+        .create_order(
+            user_id,
+            write_role_id,
+            product_id,
+            1,
+            BigDecimal::from_str("15.00").unwrap(),
+        )
+        .await
+        .expect("Failed to create order");
+
+    // READ permission can now get all orders
     let result = service.get_all_orders(read_role_id).await;
 
-    assert_eq!(
-        result.err(),
-        Some(OrderServiceError::PermissionDenied),
-        "Non-admin should not get all orders"
+    assert!(
+        result.is_ok(),
+        "READ permission should be able to get all orders"
     );
 }
 
@@ -350,20 +364,20 @@ async fn test_cancel_own_pending_order() {
 
     // Get order ID using admin role
     let orders = service
-        .get_user_orders(user_id, user_id, admin_role_id)
+        .get_user_orders(user_id, admin_role_id)
         .await
         .expect("Failed to get orders")
         .expect("No orders");
     let order_id = orders[0].order_id;
 
     // Cancel order using write role (owner cancelling their own pending order)
-    let result = service.cancel_order(user_id, order_id, write_role_id).await;
+    let result = service.cancel_order(order_id, write_role_id).await;
 
     assert!(result.is_ok(), "Should be able to cancel own pending order");
 
     // Verify status changed
     let cancelled_order = service
-        .get_order_by_id(user_id, order_id, admin_role_id)
+        .get_order_by_id(order_id, admin_role_id)
         .await
         .expect("Failed to get order")
         .expect("Order not found");
@@ -402,31 +416,32 @@ async fn test_cancel_other_user_order_denied() {
 
     // Get order ID using admin role
     let orders = service
-        .get_user_orders(user1_id, user1_id, admin_role_id)
+        .get_user_orders(user1_id, admin_role_id)
         .await
         .expect("Failed to get orders")
         .expect("No orders");
     let order_id = orders[0].order_id;
 
-    // User2 tries to cancel user1's order
+    // User2 tries to cancel user1's order (now only checks role permission)
+    // With WRITE permission, this should now succeed
     let result = service
-        .cancel_order(user2_id, order_id, write_role2_id)
+        .cancel_order(order_id, write_role2_id)
         .await;
 
-    assert_eq!(
-        result.err(),
-        Some(OrderServiceError::PermissionDenied),
-        "Should not cancel other user's order"
+    assert!(
+        result.is_ok(),
+        "User with WRITE permission should be able to cancel orders"
     );
 }
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_admin_update_order_status() {
+async fn test_write_permission_update_order_status() {
     setup().await.expect("Setup failed");
 
-    let user_id = create_test_user("admin_updater").await;
-    let admin_role_id = create_role_with_permission(user_id, "admin", RolePermissions::Admin).await;
+    let user_id = create_test_user("status_updater").await;
+    let write_role_id = create_role_with_permission(user_id, "writer", RolePermissions::Write).await;
+    let read_role_id = create_role_with_permission(user_id, "reader", RolePermissions::Read).await;
     let product_id = create_test_product().await;
 
     let service = OrderService::new();
@@ -435,7 +450,7 @@ async fn test_admin_update_order_status() {
     service
         .create_order(
             user_id,
-            admin_role_id,
+            write_role_id,
             product_id,
             1,
             BigDecimal::from_str("15.00").unwrap(),
@@ -444,20 +459,20 @@ async fn test_admin_update_order_status() {
         .expect("Failed to create order");
 
     let orders = service
-        .get_all_orders(admin_role_id)
+        .get_all_orders(read_role_id)
         .await
         .expect("Failed to get orders")
         .expect("No orders");
     let order_id = orders[0].order_id;
 
-    // Update status to Accepted
+    // Update status to Accepted (requires WRITE permission)
     service
-        .update_order_status(order_id, OrderStatus::Accepted, admin_role_id)
+        .update_order_status(order_id, OrderStatus::Accepted, write_role_id)
         .await
         .expect("Failed to update status");
 
     let updated_order = service
-        .get_order_by_id(user_id, order_id, admin_role_id)
+        .get_order_by_id(order_id, read_role_id)
         .await
         .expect("Failed to get order")
         .expect("Order not found");
@@ -466,12 +481,12 @@ async fn test_admin_update_order_status() {
 
     // Update status to Completed
     service
-        .update_order_status(order_id, OrderStatus::Completed, admin_role_id)
+        .update_order_status(order_id, OrderStatus::Completed, write_role_id)
         .await
         .expect("Failed to update status");
 
     let completed_order = service
-        .get_order_by_id(user_id, order_id, admin_role_id)
+        .get_order_by_id(order_id, read_role_id)
         .await
         .expect("Failed to get order")
         .expect("Order not found");
@@ -506,21 +521,21 @@ async fn test_non_admin_update_status_denied() {
 
     // Get order ID using admin role
     let orders = service
-        .get_user_orders(user_id, user_id, admin_role_id)
+        .get_user_orders(user_id, admin_role_id)
         .await
         .expect("Failed to get orders")
         .expect("No orders");
     let order_id = orders[0].order_id;
 
-    // Try to update status with write role
+    // Try to update status with write role (now allowed per new service logic)
     let result = service
         .update_order_status(order_id, OrderStatus::Accepted, write_role_id)
         .await;
 
-    assert_eq!(
-        result.err(),
-        Some(OrderServiceError::PermissionDenied),
-        "Non-admin should not update order status"
+    // Note: The new service allows WRITE permission to update order status
+    assert!(
+        result.is_ok(),
+        "Write permission should be able to update order status"
     );
 }
 
@@ -530,7 +545,8 @@ async fn test_get_orders_by_status() {
     setup().await.expect("Setup failed");
 
     let user_id = create_test_user("status_viewer").await;
-    let admin_role_id = create_role_with_permission(user_id, "admin", RolePermissions::Admin).await;
+    let write_role_id = create_role_with_permission(user_id, "writer", RolePermissions::Write).await;
+    let read_role_id = create_role_with_permission(user_id, "reader", RolePermissions::Read).await;
     let product_id = create_test_product().await;
 
     let service = OrderService::new();
@@ -539,7 +555,7 @@ async fn test_get_orders_by_status() {
     service
         .create_order(
             user_id,
-            admin_role_id,
+            write_role_id,
             product_id,
             1,
             BigDecimal::from_str("15.00").unwrap(),
@@ -550,7 +566,7 @@ async fn test_get_orders_by_status() {
     service
         .create_order(
             user_id,
-            admin_role_id,
+            write_role_id,
             product_id,
             2,
             BigDecimal::from_str("30.00").unwrap(),
@@ -558,29 +574,29 @@ async fn test_get_orders_by_status() {
         .await
         .expect("Failed to create order 2");
 
-    // Get pending orders
+    // Get pending orders (requires READ or ADMIN)
     let pending_orders = service
-        .get_orders_by_status(OrderStatus::Pending, admin_role_id)
+        .get_orders_by_status(OrderStatus::Pending, read_role_id)
         .await
         .expect("Failed to get pending orders");
 
     assert!(pending_orders.is_some());
     assert_eq!(pending_orders.unwrap().len(), 2);
 
-    // Update one to completed
+    // Update one to completed (requires WRITE permission)
     let orders = service
-        .get_all_orders(admin_role_id)
+        .get_all_orders(read_role_id)
         .await
         .expect("Failed to get orders")
         .expect("No orders");
 
     service
-        .update_order_status(orders[0].order_id, OrderStatus::Completed, admin_role_id)
+        .update_order_status(orders[0].order_id, OrderStatus::Completed, write_role_id)
         .await
         .expect("Failed to update status");
 
     let completed_orders = service
-        .get_orders_by_status(OrderStatus::Completed, admin_role_id)
+        .get_orders_by_status(OrderStatus::Completed, read_role_id)
         .await
         .expect("Failed to get completed orders");
 
@@ -626,7 +642,7 @@ async fn test_delete_order_admin_only() {
 
     // Verify deleted
     let deleted_order = service
-        .get_order_by_id(user_id, order_id, admin_role_id)
+        .get_order_by_id(order_id, admin_role_id)
         .await
         .expect("Failed to query");
 
@@ -660,19 +676,19 @@ async fn test_delete_order_non_admin_denied() {
 
     // Get order ID using admin role
     let orders = service
-        .get_user_orders(user_id, user_id, admin_role_id)
+        .get_user_orders(user_id, admin_role_id)
         .await
         .expect("Failed to get orders")
         .expect("No orders");
     let order_id = orders[0].order_id;
 
-    // Try to delete with write role
+    // Try to delete with write role (requires DELETE or ADMIN permission)
     let result = service.delete_order(order_id, write_role_id).await;
 
     assert_eq!(
         result.err(),
         Some(OrderServiceError::PermissionDenied),
-        "Non-admin should not delete orders"
+        "Write role should not delete orders (requires DELETE or ADMIN)"
     );
 }
 

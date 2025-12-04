@@ -96,7 +96,7 @@ impl OrderService {
         &self,
         role_id: i32,
     ) -> Result<Option<Vec<Order>>, OrderServiceError> {
-        if !self.has_permission(role_id, RolePermissions::Admin).await? || !self.has_permission(role_id, RolePermissions::Read).await? {
+        if !self.has_permission(role_id, RolePermissions::Admin).await? && !self.has_permission(role_id, RolePermissions::Read).await? {
             return Err(OrderServiceError::PermissionDenied);
         }
 
