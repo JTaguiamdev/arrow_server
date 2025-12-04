@@ -1,4 +1,3 @@
-use crate::api::controllers::user_controller::{login, register_user};
 use crate::api::routes::auth_routes;
 use axum::body::Body;
 use axum::extract::Request;
@@ -6,7 +5,6 @@ use axum::middleware::Next;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{Router, middleware};
-use azure_storage::StorageCredentialsInner::Anonymous;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
