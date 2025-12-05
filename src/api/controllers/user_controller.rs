@@ -11,8 +11,11 @@ use axum::body::Body;
 use axum::extract::{Path, Query};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-
-// TODO: REFACTOR: Create controller trait to reduce code duplication
+// TODO: Return a JWT upon registration and login
+// TODO: Only allow admins to register users if database is empty, allow open registration. First user should be admin.
+// TODO: If requesting user is admin, include the user_id in the response of all user fetches.
+// NOTE: Use claims to determine if the user is admin for protected routes.
+/// Register a new user
 pub async fn register_user(Json(new_user): Json<NewUserDTO>) -> impl IntoResponse {
     let auth = AuthService::new();
     let repo = UserRepo::new();
@@ -51,7 +54,7 @@ pub async fn register_user(Json(new_user): Json<NewUserDTO>) -> impl IntoRespons
         }
     }
 }
-
+// TODO: Return a JWT upon successful login
 pub async fn login(Json(login_user): Json<LoginDTO>) -> impl IntoResponse {
     let auth = AuthService::new();
     let repo = UserRepo::new();
@@ -82,9 +85,6 @@ pub async fn login(Json(login_user): Json<LoginDTO>) -> impl IntoResponse {
         (StatusCode::NOT_FOUND, "User not found").into_response()
     }
 }
-
-// TODO(optional): Implement JWT authentication for protected routes
-// TODO(optional): Add rate limiting and input validation
 
 /// Converts a User model to UserDTO, fetching associated role if available
 async fn user_to_dto(user: &User) -> UserDTO {
@@ -172,7 +172,7 @@ pub async fn get_user_by_name(Query(params): Query<UserQueryParams>) -> impl Int
         }
     }
 }
-
+// TODO: Admin only route
 /// Update user by ID
 pub async fn edit_user(
     Path(user_id): Path<i32>,
@@ -221,7 +221,7 @@ pub async fn edit_user(
         }
     }
 }
-
+// TODO: Admin only route
 /// Delete user by ID
 pub async fn delete_user(Path(user_id): Path<i32>) -> impl IntoResponse {
     let repo = UserRepo::new();

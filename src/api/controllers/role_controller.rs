@@ -10,7 +10,9 @@ use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use std::str::FromStr;
-
+// TODO: Everything here should only be accessible by admin users. Implement admin check middleware or inline checks.
+// TODO: Include role_id in responses when fetching roles.
+// TODO: Add add permission to role endpoint.
 /// Get all roles
 pub async fn get_all_roles() -> impl IntoResponse {
     let repo = UserRoleRepo::new();
