@@ -7,9 +7,8 @@ use crate::services::product_service::ProductService;
 use crate::services::errors::ProductServiceError;
 use crate::security::jwt::AccessClaims;
 
-// TODO: Add CRUD operations for products.
-// NOTE: Should only be accessible by admin users.
-
+// NOTE: All routes except get_all should only be accessible by admin users.
+// TODO: Get all products endpoint is accessible by all authenticated users.
 /// Get all products
 pub async fn get_all_products(claims: AccessClaims) -> impl IntoResponse {
     let service = ProductService::new();
