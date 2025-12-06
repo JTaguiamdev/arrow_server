@@ -1,0 +1,24 @@
+meta {
+  name: Create Product
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://127.0.0.1:3000/api/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Burger",
+    "description": "Delicious beef burger with cheese",
+    "price": "9.99",
+    "product_image_uri": "/images/burger.jpg"
+  }
+}

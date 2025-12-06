@@ -1,0 +1,24 @@
+meta {
+  name: Update Product
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://127.0.0.1:3000/api/v1/products/1
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Double Burger",
+    "description": "Double beef burger with extra cheese",
+    "price": "14.99",
+    "product_image_uri": "/images/double-burger.jpg"
+  }
+}

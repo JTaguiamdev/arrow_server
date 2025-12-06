@@ -1,11 +1,11 @@
 meta {
-  name: EDIT USER
+  name: Set Permission
   type: http
   seq: 5
 }
 
 post {
-  url: http://127.0.0.1:3000/api/v1/users/1
+  url: http://127.0.0.1:3000/api/v1/roles/1/set_permission
   body: json
   auth: none
 }
@@ -16,7 +16,6 @@ headers {
 
 body:json {
   {
-    "username": "updateduser",
-    "password": "updatedpassword"
+    "permission": "read:users"
   }
 }

@@ -1,7 +1,7 @@
 meta {
-  name: CREATE ROLE
+  name: Create Role
   type: http
-  seq: 8
+  seq: 2
 }
 
 post {
@@ -16,7 +16,7 @@ headers {
 
 body:json {
   {
-    "user_id": 1,
+    "username": "testuser",
     "name": "admin",
     "description": "Administrator role with full access"
   }
