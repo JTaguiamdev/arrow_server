@@ -355,3 +355,39 @@ pub async fn delete_user(claims: AccessClaims, Path(user_id): Path<i32>) -> impl
         }
     }
 }
+/// Creates a new user (Admin only)
+pub async fn create_user(claims: AccessClaims, Json(new_user): Json<NewUserDTO>) -> impl IntoResponse {
+    let roles = claims.roles.unwrap_or_default();
+    if !check_is_admin(&roles).await {
+        tracing::error!("Admin permission required");
+        return (StatusCode::FORBIDDEN, "Admin permission required").into_response();
+    }
+
+    let auth = AuthService::new();
+    let user_repo = UserRepo::new();
+
+    let hashed_password = match auth.hash_password(&new_user.password).await {
+        Ok(h) => h,
+        Err(e) => {
+            tracing::error!("Error hashing password: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to process password",
+            )
+                .into_response();
+        }
+    };
+
+    let user_create_dto = NewUserDTO {
+        username: new_user.username.clone(),
+        password: hashed_password,
+    };
+
+    // Create User
+    if let Err(e) = user_repo.add(NewUser::from(&user_create_dto)).await {
+        tracing::error!("Error creating user: {}", e);
+        return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create user").into_response();
+    }
+
+    (StatusCode::CREATED, "User created").into_response()
+}

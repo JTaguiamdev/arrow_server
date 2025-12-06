@@ -22,11 +22,11 @@ pub async fn start() {
         .layer(cors_layer)
         .layer(middleware::from_fn(logging_middleware));
 
-    let listener = TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 3000)))
+    let listener = TcpListener::bind(SocketAddr::from(([0, 0, 0, 0], 3000)))
         .await
         .expect("Failed to bind to address");
 
-    tracing::info!("Listening on 127.0.0.1:3000");
+    tracing::info!("Listening on port 3000");
 
     axum::serve(listener, router)
         .await
