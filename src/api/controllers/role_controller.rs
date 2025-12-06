@@ -165,6 +165,54 @@ pub async fn set_permission(
     }
 }
 
+/// Set permission on a role by role name (Admin only)
+pub async fn set_permission_by_name(
+    claims: AccessClaims,
+    Path(role_name): Path<String>,
+    Json(permission_dto): Json<SetPermissionDTO>,
+) -> impl IntoResponse {
+    let roles = claims.roles.unwrap_or_default();
+    if !check_is_admin(&roles).await {
+        return (StatusCode::FORBIDDEN, "Admin permission required").into_response();
+    }
+
+    let repo = UserRoleRepo::new();
+
+    // Verify role exists
+    let role = match repo.get_by_name(&role_name).await {
+        Ok(None) => return (StatusCode::NOT_FOUND, "Role not found").into_response(),
+        Err(e) => {
+            tracing::error!("Error fetching role: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch role").into_response();
+        }
+        Ok(Some(r)) => r,
+    };
+
+    // Parse permission
+    let permission = match RolePermissions::from_str(&permission_dto.permission) {
+        Ok(p) => p,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                "Invalid permission. Valid values: READ, WRITE, DELETE, ADMIN",
+            )
+                .into_response();
+        }
+    };
+
+    match repo.set_permissions(role.role_id, permission).await {
+        Ok(_) => (StatusCode::OK, "Permission set").into_response(),
+        Err(e) => {
+            tracing::error!("Error setting permission: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to set permission",
+            )
+                .into_response()
+        }
+    }
+}
+
 /// Remove permission from a role (sets to NULL) (Admin only)
 pub async fn remove_permission(
     claims: AccessClaims,

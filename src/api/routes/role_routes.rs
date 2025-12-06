@@ -7,6 +7,7 @@ pub fn routes() -> Router<()> {
         .route("/", get(get_all_roles))
         .route("/create", post(create_role))
         .route("/{id}/set_permission", post(set_permission))
+        .route("/set_permission/{role_name}", post(set_permission))
         .route("/{id}", delete(delete_role))
         .route("/update/{id}", post(update_role))
         .route("/assign", post(assign_role_to_user))

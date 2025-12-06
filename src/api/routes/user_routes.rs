@@ -6,6 +6,7 @@ use axum::routing::{delete, get, post};
 pub fn routes() -> Router<()> {
     Router::new()
         .route("/", get(user_controller::get_all_users))
+        .route("/create", post(user_controller::create_user))
         .route("/{id}", get(user_controller::get_user))
         .route("/search", get(get_user_by_name))
         .route("/{id}", post(edit_user))
