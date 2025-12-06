@@ -112,7 +112,6 @@ impl UserRoleRepo {
         .await
     }
 
-    // TODO: Generate tests
     pub async fn assign_role_to_user(
         &self,
         user_id_val: i32,
@@ -128,7 +127,6 @@ impl UserRoleRepo {
     }
 }
 
-// TODO: Create tests
 #[async_trait]
 impl Repository for UserRoleRepo {
     type Id = i32;

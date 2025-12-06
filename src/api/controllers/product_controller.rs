@@ -10,7 +10,6 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 // NOTE: All routes except get_all should only be accessible by admin users.
-// TODO: Get all products endpoint is accessible by all authenticated users.
 /// Get all products
 pub async fn get_all_products(claims: AccessClaims) -> impl IntoResponse {
     let service = ProductService::new();

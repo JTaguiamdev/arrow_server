@@ -9,7 +9,6 @@ use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 
-// TODO: Rework API implementation use https://github.com/sheroz/axum-rest-api-sample as reference
 pub async fn start() {
     let cors_layer = CorsLayer::new().allow_origin(Any);
     let router = Router::new()

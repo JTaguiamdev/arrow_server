@@ -9,7 +9,6 @@ pub struct RoleDTO {
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
-// TODO: Do not use user_id here, use username instead and then resolve to user_id in service layer
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct NewRoleDTO {
     pub username: String,

@@ -6,8 +6,7 @@ use crate::security::errors::AuthError;
 use serde::{Deserialize, Serialize};
 
 pub struct JwtService;
-// TODO: Wire to endpoints
-// TODO: Generate tests
+
 impl JwtService {
     pub fn new() -> Self {
         JwtService

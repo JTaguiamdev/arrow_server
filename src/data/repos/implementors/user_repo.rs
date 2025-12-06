@@ -13,7 +13,6 @@ impl UserRepo {
     pub fn new() -> Self {
         UserRepo {}
     }
-    // TODO: Add any additional methods specific to UserRepo if needed
     /// Retrieves a user by their username.
     ///  # Arguments
     ///  * `username_query` - A string slice that holds the username to search for.
@@ -45,7 +44,6 @@ impl UserRepo {
         }
     }
 }
-// TODO: Create tests
 #[async_trait]
 impl Repository for UserRepo {
     type Id = i32;
