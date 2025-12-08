@@ -1,0 +1,23 @@
+meta {
+  name: Create Role
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://127.0.0.1:3000/api/v1/roles/create
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "testuser",
+    "name": "admin",
+    "description": "Administrator role with full access"
+  }
+}

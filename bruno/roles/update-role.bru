@@ -1,0 +1,22 @@
+meta {
+  name: Update Role
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://127.0.0.1:3000/api/v1/roles/update/2
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "customer",
+    "description": "customer on the restaurant"
+  }
+}

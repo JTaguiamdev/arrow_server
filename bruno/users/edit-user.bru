@@ -1,0 +1,22 @@
+meta {
+  name: Edit User
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://127.0.0.1:3000/api/v1/users/1
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "updateduser",
+    "password": "updatedpassword"
+  }
+}
