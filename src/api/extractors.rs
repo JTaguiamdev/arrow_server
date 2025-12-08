@@ -7,7 +7,6 @@ use axum_extra::TypedHeader;
 use axum_extra::headers::Authorization;
 use axum_extra::headers::authorization::Bearer;
 
-
 impl FromRequestParts<()> for AccessClaims {
     type Rejection = APIErrors;
 

@@ -193,8 +193,7 @@ pub async fn refresh(claims: AccessClaims) -> impl IntoResponse {
                 }
                 Err(e) => {
                     tracing::error!("Error generating token: {:?}", e);
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Token generation failed")
-                        .into_response()
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Token generation failed").into_response()
                 }
             }
         }
@@ -388,7 +387,10 @@ pub async fn delete_user(claims: AccessClaims, Path(user_id): Path<i32>) -> impl
     }
 }
 /// Creates a new user (Admin only)
-pub async fn create_user(claims: AccessClaims, Json(new_user): Json<NewUserDTO>) -> impl IntoResponse {
+pub async fn create_user(
+    claims: AccessClaims,
+    Json(new_user): Json<NewUserDTO>,
+) -> impl IntoResponse {
     let roles = claims.roles.unwrap_or_default();
     if !check_is_admin(&roles).await {
         tracing::error!("Admin permission required");

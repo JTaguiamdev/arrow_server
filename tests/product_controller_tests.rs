@@ -170,7 +170,8 @@ async fn test_get_all_products_success() {
 #[serial_test::serial]
 async fn test_create_product_success() {
     setup().await.expect("Setup failed");
-    let (_, token) = create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
+    let (_, token) =
+        create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
 
     let app = app();
 
@@ -258,7 +259,8 @@ async fn test_get_product_by_id_success() {
 #[serial_test::serial]
 async fn test_update_product_success() {
     setup().await.expect("Setup failed");
-    let (_, token) = create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
+    let (_, token) =
+        create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
     let pid = create_test_product("Old Name", BigDecimal::from(10)).await;
 
     let app = app();
@@ -293,7 +295,8 @@ async fn test_update_product_success() {
 #[serial_test::serial]
 async fn test_delete_product_success() {
     setup().await.expect("Setup failed");
-    let (_, token) = create_user_with_role("deleter", "pass", "DELETER", RolePermissions::Delete).await;
+    let (_, token) =
+        create_user_with_role("deleter", "pass", "DELETER", RolePermissions::Delete).await;
     let pid = create_test_product("To Delete", BigDecimal::from(10)).await;
 
     let app = app();

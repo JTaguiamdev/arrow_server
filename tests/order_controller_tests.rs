@@ -1,7 +1,7 @@
 use arrow_server_lib::api::controllers::dto::order_dto::OrderResponse;
 use arrow_server_lib::api::controllers::dto::user_dto::UserDTO;
 use arrow_server_lib::api::controllers::order_controller::{
-    create_order, get_all_orders, get_order_by_id, get_user_orders_by_name,
+    create_order, get_all_orders, get_order_by_id, get_user_orders_by_name, update_order_status,
 };
 use arrow_server_lib::data::database::Database;
 use arrow_server_lib::data::models::product::NewProduct;
@@ -134,6 +134,7 @@ fn app() -> Router {
         .route("/orders", get(get_all_orders))
         .route("/orders", post(create_order))
         .route("/orders/{id}", get(get_order_by_id))
+        .route("/orders/{id}", post(update_order_status))
         .route("/orders/user/{username}", get(get_user_orders_by_name))
 }
 
@@ -177,8 +178,7 @@ async fn test_create_order_success() {
 #[serial_test::serial]
 async fn test_create_order_forbidden() {
     setup().await.expect("Setup failed");
-    let (_, token) =
-        create_user_with_role("reader", "pass", "READER", RolePermissions::Read).await;
+    let (_, token) = create_user_with_role("reader", "pass", "READER", RolePermissions::Read).await;
     let pid = create_test_product("Product 1", BigDecimal::from(10)).await;
 
     let app = app();
@@ -317,4 +317,275 @@ async fn test_get_user_orders_by_name() {
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let orders: Vec<OrderResponse> = serde_json::from_slice(&body).unwrap();
     assert_eq!(orders.len(), 1);
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_update_order_status_success() {
+    setup().await.expect("Setup failed");
+    let (_, token) =
+        create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
+    let pid = create_test_product("Product 1", BigDecimal::from(10)).await;
+
+    let app = app();
+
+    // 1. Create Order
+    let _ = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/orders")
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "products": [
+                            {
+                                "product_id": pid,
+                                "quantity": 1
+                            }
+                        ]
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Get the created order (assume ID 1 since DB was wiped)
+    // To be safe, let's fetch it
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/orders")
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let orders: Vec<OrderResponse> = serde_json::from_slice(&body).unwrap();
+    let order_id = orders[0].order_id;
+
+    // 2. Update Status
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/orders/{}", order_id))
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "status": "Accepted"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // 3. Verify Update
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/orders/{}", order_id))
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let order: OrderResponse = serde_json::from_slice(&body).unwrap();
+    assert_eq!(order.status, Some("Accepted".to_string()));
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_update_order_status_not_found() {
+    setup().await.expect("Setup failed");
+    let (_, token) =
+        create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
+
+    let app = app();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/orders/99999")
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "status": "Accepted"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_update_order_status_invalid_status() {
+    setup().await.expect("Setup failed");
+    let (_, token) =
+        create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
+    let pid = create_test_product("Product 1", BigDecimal::from(10)).await;
+
+    let app = app();
+
+    // 1. Create Order
+    let _ = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/orders")
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "products": [
+                            {
+                                "product_id": pid,
+                                "quantity": 1
+                            }
+                        ]
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    // Fetch ID
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/orders")
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let orders: Vec<OrderResponse> = serde_json::from_slice(&body).unwrap();
+    let order_id = orders[0].order_id;
+
+    // 2. Try Update with invalid status
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/orders/{}", order_id))
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "status": "InvalidStatus"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_update_order_status_forbidden() {
+    setup().await.expect("Setup failed");
+    // Reader cannot update status (requires WRITE)
+    let (_, token) =
+        create_user_with_role("reader", "pass", "READER", RolePermissions::Read).await;
+    let pid = create_test_product("Product 1", BigDecimal::from(10)).await;
+
+    // Need a writer to create the order first
+    let (_, writer_token) =
+        create_user_with_role("writer", "pass2", "WRITER", RolePermissions::Write).await;
+
+    let app = app();
+
+    // 1. Create Order
+    let _ = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/orders")
+                .header("Authorization", format!("Bearer {}", writer_token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "products": [
+                            {
+                                "product_id": pid,
+                                "quantity": 1
+                            }
+                        ]
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    // Fetch ID
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/orders")
+                .header("Authorization", format!("Bearer {}", writer_token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let orders: Vec<OrderResponse> = serde_json::from_slice(&body).unwrap();
+    let order_id = orders[0].order_id;
+
+    // 2. Reader tries to update status
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/orders/{}", order_id))
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "status": "Accepted"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }

@@ -39,3 +39,8 @@ impl From<Order> for OrderResponse {
         }
     }
 }
+/// Struct for updating order status
+#[derive(Serialize, Deserialize)]
+pub struct UpdateOrderStatusRequest {
+    pub status: Option<String>,
+}

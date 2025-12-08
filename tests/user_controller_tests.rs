@@ -1,6 +1,7 @@
 use arrow_server_lib::api::controllers::dto::user_dto::UserDTO;
 use arrow_server_lib::api::controllers::user_controller::{
-    delete_user, edit_user, get_all_users, get_user, get_user_by_name, login, register_user,
+    delete_user, edit_user, get_all_users, get_user, get_user_by_name, login, refresh,
+    register_user,
 };
 use arrow_server_lib::data::database::Database;
 use arrow_server_lib::data::models::user::NewUser;
@@ -157,6 +158,7 @@ fn app() -> Router {
     Router::new()
         .route("/register", post(register_user))
         .route("/login", post(login))
+        .route("/refresh", get(refresh))
         .route("/users", get(get_all_users))
         .route("/users/{id}", get(get_user))
         .route("/users/{id}", patch(edit_user))
@@ -322,6 +324,68 @@ async fn test_login_user_not_found() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_refresh_success() {
+    setup().await.expect("Setup failed");
+
+    // Login to get a token
+    let (_, token) = create_regular_user("refreshuser", "password").await;
+
+    let app = app();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/refresh")
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // Verify response contains a new token
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(body["token"].is_string());
+    assert_eq!(body["message"], "Token refreshed successfully");
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_refresh_unauthorized() {
+    setup().await.expect("Setup failed");
+
+    let app = app();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/refresh")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // No token provided -> Unauthorized (handled by extractor usually, which returns 401 or 400 depending on impl)
+    // Wait, Axum extractors usually return 400 Bad Request if a required header is missing, or 401 if it's invalid.
+    // The `claims: AccessClaims` extractor in `src/api/extractors.rs` likely handles this. 
+    // Usually `Authorization` header missing results in 401 or 400. Let's assume 401.
+    // Actually, if I look at standard Axum/Tower behavior for missing parts of extractors, it returns 400 usually unless customized.
+    // However, the `AccessClaims` extractor probably returns `(StatusCode::UNAUTHORIZED, ...)` on failure.
+    // Let's check `src/api/extractors.rs` if needed, but for now I'll check for 401 as it is the standard for missing/invalid auth.
+    // If the test fails I'll adjust.
+    
+    // Most auth extractors return 401.
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

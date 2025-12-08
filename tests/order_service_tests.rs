@@ -700,10 +700,7 @@ async fn test_order_status_enum() {
     assert_eq!(OrderStatus::Cancelled.as_str(), "Cancelled");
 
     assert_eq!(OrderStatus::from_str("pending"), Ok(OrderStatus::Pending));
-    assert_eq!(
-        OrderStatus::from_str("ACCEPTED"),
-        Ok(OrderStatus::Accepted)
-    );
+    assert_eq!(OrderStatus::from_str("ACCEPTED"), Ok(OrderStatus::Accepted));
     assert_eq!(
         OrderStatus::from_str("Completed"),
         Ok(OrderStatus::Completed)
