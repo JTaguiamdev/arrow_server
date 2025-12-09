@@ -473,7 +473,7 @@ async fn test_update_order_status_invalid_status() {
         )
         .await
         .unwrap();
-    
+
     // Fetch ID
     let response = app
         .clone()
@@ -517,8 +517,7 @@ async fn test_update_order_status_invalid_status() {
 async fn test_update_order_status_forbidden() {
     setup().await.expect("Setup failed");
     // Reader cannot update status (requires WRITE)
-    let (_, token) =
-        create_user_with_role("reader", "pass", "READER", RolePermissions::Read).await;
+    let (_, token) = create_user_with_role("reader", "pass", "READER", RolePermissions::Read).await;
     let pid = create_test_product("Product 1", BigDecimal::from(10)).await;
 
     // Need a writer to create the order first
@@ -551,7 +550,7 @@ async fn test_update_order_status_forbidden() {
         )
         .await
         .unwrap();
-    
+
     // Fetch ID
     let response = app
         .clone()

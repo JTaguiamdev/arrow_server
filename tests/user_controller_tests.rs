@@ -377,13 +377,13 @@ async fn test_refresh_unauthorized() {
 
     // No token provided -> Unauthorized (handled by extractor usually, which returns 401 or 400 depending on impl)
     // Wait, Axum extractors usually return 400 Bad Request if a required header is missing, or 401 if it's invalid.
-    // The `claims: AccessClaims` extractor in `src/api/extractors.rs` likely handles this. 
+    // The `claims: AccessClaims` extractor in `src/api/extractors.rs` likely handles this.
     // Usually `Authorization` header missing results in 401 or 400. Let's assume 401.
     // Actually, if I look at standard Axum/Tower behavior for missing parts of extractors, it returns 400 usually unless customized.
     // However, the `AccessClaims` extractor probably returns `(StatusCode::UNAUTHORIZED, ...)` on failure.
     // Let's check `src/api/extractors.rs` if needed, but for now I'll check for 401 as it is the standard for missing/invalid auth.
     // If the test fails I'll adjust.
-    
+
     // Most auth extractors return 401.
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }

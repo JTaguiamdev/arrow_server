@@ -168,7 +168,8 @@ impl OrderService {
         role_id: i32,
     ) -> Result<(), OrderServiceError> {
         if !self.has_permission(role_id, RolePermissions::Write).await?
-        && !self.has_permission(role_id, RolePermissions::Admin).await? {
+            && !self.has_permission(role_id, RolePermissions::Admin).await?
+        {
             return Err(OrderServiceError::PermissionDenied);
         }
 
