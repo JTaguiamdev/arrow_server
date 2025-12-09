@@ -47,6 +47,8 @@ diesel::table! {
     product_categories (product_id, category_id) {
         product_id -> Integer,
         category_id -> Integer,
+        created_at -> Nullable<Timestamp>,
+        updated_at -> Nullable<Timestamp>,
     }
 }
 
