@@ -51,6 +51,8 @@ impl ProductCategoryService {
                         cat.created_at = None;
                         cat.updated_at = None;
                     });
+            } else {
+                return Ok(Some(vec![]));
             }
 
             Ok(res)

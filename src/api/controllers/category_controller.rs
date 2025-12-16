@@ -17,7 +17,8 @@ pub async fn get_categories(claims: AccessClaims) -> impl IntoResponse {
     for role in claims.roles.unwrap() {
         match service.get_categories(role as i32).await {
             Ok(categories) => {
-                return (StatusCode::OK, Json(categories)).into_response();
+                let response = categories.unwrap_or_default();
+                return (StatusCode::OK, Json(response)).into_response();
             }
             Err(ProductCategoryServiceError::PermissionDenied) => continue,
             Err(_) => {

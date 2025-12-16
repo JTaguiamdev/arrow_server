@@ -1,6 +1,10 @@
 use arrow_server_lib::data::database::*;
+use arrow_server_lib::data::models::categories::NewCategory;
+use arrow_server_lib::data::models::product_category::NewProductCategory;
 use arrow_server_lib::data::models::user::NewUser;
 use arrow_server_lib::data::models::user_roles::{NewUserRole, RolePermissions};
+use arrow_server_lib::data::repos::implementors::category_repo::CategoryRepo;
+use arrow_server_lib::data::repos::implementors::product_category_repo::ProductCategoryRepo;
 use arrow_server_lib::data::repos::implementors::user_repo::UserRepo;
 use arrow_server_lib::data::repos::implementors::user_role_repo::UserRoleRepo;
 use arrow_server_lib::data::repos::traits::repository::Repository;
@@ -819,4 +823,63 @@ async fn test_product_with_decimal_precision() {
         .expect("Product not found");
 
     assert_eq!(product.price, BigDecimal::from_str("123.45").unwrap());
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_get_product_with_categories() {
+    setup().await.expect("Setup failed");
+
+    let user_id = create_test_user("cat_viewer").await;
+    let write_role = create_role_with_permission(user_id, "writer", RolePermissions::Write).await;
+    let read_role = create_role_with_permission(user_id, "reader", RolePermissions::Read).await;
+
+    let service = ProductService::new();
+
+    // Create product
+    service
+        .create_product(
+            "CatProduct",
+            None,
+            BigDecimal::from_str("10.00").unwrap(),
+            None,
+            write_role,
+        )
+        .await
+        .expect("Failed to create product");
+
+    let product = service
+        .get_product_by_name("CatProduct", read_role)
+        .await
+        .expect("Failed to get product")
+        .expect("Product not found");
+
+    // Create Category
+    let category_repo = CategoryRepo::new();
+    let category = NewCategory {
+        name: "TestCategory",
+        description: None,
+    };
+    category_repo.add(category).await.expect("Failed to add category");
+    let category = category_repo.get_by_name("TestCategory").await.expect("Failed to get").expect("Category not found");
+
+    // Link
+    let pc_repo = ProductCategoryRepo::new();
+    let link = NewProductCategory {
+        product_id: &product.product_id,
+        category_id: &category.category_id,
+    };
+    pc_repo.add(link).await.expect("Failed to link");
+
+    // Fetch product again
+    let fetched = service
+        .get_product_by_id(product.product_id, read_role)
+        .await
+        .expect("Failed to get product")
+        .expect("Product not found");
+    
+    assert!(fetched.categories.is_some());
+    let cats = fetched.categories.unwrap();
+    assert_eq!(cats.len(), 1);
+    assert_eq!(cats[0].name, "TestCategory");
 }

@@ -21,11 +21,7 @@ pub async fn get_all_products(claims: AccessClaims) -> impl IntoResponse {
     for role_id in roles {
         match service.get_all_products(role_id as i32).await {
             Ok(products) => {
-                let response: Vec<ProductResponse> = products
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(ProductResponse::from)
-                    .collect();
+                let response: Vec<ProductResponse> = products.unwrap_or_default();
                 return (StatusCode::OK, Json(response)).into_response();
             }
             Err(ProductServiceError::PermissionDenied) => continue,
@@ -51,7 +47,7 @@ pub async fn get_product_by_id(
     for role_id in roles {
         match service.get_product_by_id(product_id, role_id as i32).await {
             Ok(Some(product)) => {
-                return (StatusCode::OK, Json(ProductResponse::from(product))).into_response();
+                return (StatusCode::OK, Json(product)).into_response();
             }
             Ok(None) => return (StatusCode::NOT_FOUND, "Product not found").into_response(),
             Err(ProductServiceError::PermissionDenied) => continue,
