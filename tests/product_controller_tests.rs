@@ -5,9 +5,11 @@ use arrow_server_lib::api::controllers::product_controller::{
 use arrow_server_lib::api::response::ProductResponse;
 use arrow_server_lib::data::database::Database;
 use arrow_server_lib::data::models::product::NewProduct;
+use arrow_server_lib::data::models::categories::NewCategory;
 use arrow_server_lib::data::models::user::NewUser;
 use arrow_server_lib::data::models::user_roles::{NewUserRole, RolePermissions};
 use arrow_server_lib::data::repos::implementors::product_repo::ProductRepo;
+use arrow_server_lib::data::repos::implementors::category_repo::CategoryRepo;
 use arrow_server_lib::data::repos::implementors::user_repo::UserRepo;
 use arrow_server_lib::data::repos::implementors::user_role_repo::UserRoleRepo;
 use arrow_server_lib::data::repos::traits::repository::Repository;
@@ -38,10 +40,14 @@ async fn setup() -> Result<(), result::Error> {
     use arrow_server_lib::data::models::schema::products::dsl::products;
     use arrow_server_lib::data::models::schema::user_roles::dsl::user_roles;
     use arrow_server_lib::data::models::schema::users::dsl::users;
+    use arrow_server_lib::data::models::schema::categories::dsl::categories;
+    use arrow_server_lib::data::models::schema::product_categories::dsl::product_categories;
 
     diesel::delete(order_products).execute(&mut conn).await?;
     diesel::delete(orders).execute(&mut conn).await?;
+    diesel::delete(product_categories).execute(&mut conn).await?;
     diesel::delete(products).execute(&mut conn).await?;
+    diesel::delete(categories).execute(&mut conn).await?;
     diesel::delete(user_roles).execute(&mut conn).await?;
     diesel::delete(users).execute(&mut conn).await?;
 
@@ -128,6 +134,20 @@ async fn create_test_product(name: &str, price: BigDecimal) -> i32 {
         .expect("Failed to get product")
         .expect("Product not found")
         .product_id
+}
+
+async fn create_test_category(name: &str) -> i32 {
+    let repo = CategoryRepo::new();
+    let category = NewCategory {
+        name,
+        description: Some("Test Category"),
+    };
+    repo.add(category).await.expect("Failed to add category");
+    repo.get_by_name(name)
+        .await
+        .expect("Failed to get category")
+        .expect("Category not found")
+        .category_id
 }
 
 fn app() -> Router {
@@ -319,4 +339,160 @@ async fn test_delete_product_success() {
     let repo = ProductRepo::new();
     let product = repo.get_by_id(pid).await.unwrap();
     assert!(product.is_none());
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_create_product_with_categories() {
+    setup().await.expect("Setup failed");
+    let (_, token) =
+        create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
+    let _ = create_test_category("Cat1").await;
+    let _ = create_test_category("Cat2").await;
+
+    let app_router = app();
+
+    let response = app_router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/products")
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "name": "Product With Cats",
+                        "description": "A new product",
+                        "price": 15.50,
+                        "product_image_uri": "http://example.com/image.png",
+                        "categories": ["Cat1", "Cat2"]
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // Verify categories
+    let repo = ProductRepo::new();
+    let product = repo.get_by_name("Product With Cats").await.unwrap().unwrap();
+    
+    // We can fetch via endpoint to see if categories are returned
+    let app_router2 = app();
+    let response = app_router2
+        .oneshot(
+            Request::builder()
+                .uri(format!("/products/{}", product.product_id))
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let product_resp: ProductResponse = serde_json::from_slice(&body).unwrap();
+    
+    assert!(product_resp.categories.is_some());
+    let cats = product_resp.categories.unwrap();
+    assert_eq!(cats.len(), 2);
+    let cat_names: Vec<String> = cats.into_iter().map(|c| c.name).collect();
+    assert!(cat_names.contains(&"Cat1".to_string()));
+    assert!(cat_names.contains(&"Cat2".to_string()));
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_update_product_categories() {
+    setup().await.expect("Setup failed");
+    let (_, token) =
+        create_user_with_role("writer", "pass", "WRITER", RolePermissions::Write).await;
+    let pid = create_test_product("Product Update", BigDecimal::from(10)).await;
+    let _ = create_test_category("CatA").await;
+    let _ = create_test_category("CatB").await;
+
+    // First update to add categories
+    let app_router = app();
+    let response = app_router
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/products/{}", pid))
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "categories": ["CatA", "CatB"]
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // Verify
+    let app_router2 = app();
+    let response = app_router2
+        .oneshot(
+            Request::builder()
+                .uri(format!("/products/{}", pid))
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let product_resp: ProductResponse = serde_json::from_slice(&body).unwrap();
+    let cats = product_resp.categories.unwrap();
+    assert_eq!(cats.len(), 2);
+
+    // Second update to change categories (remove CatB)
+    let app_router3 = app();
+    let response = app_router3
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/products/{}", pid))
+                .header("Authorization", format!("Bearer {}", token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "categories": ["CatA"]
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // Verify again
+    let app_router4 = app();
+    let response = app_router4
+        .oneshot(
+            Request::builder()
+                .uri(format!("/products/{}", pid))
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let product_resp: ProductResponse = serde_json::from_slice(&body).unwrap();
+    let cats = product_resp.categories.unwrap();
+    assert_eq!(cats.len(), 1);
+    assert_eq!(cats[0].name, "CatA");
 }

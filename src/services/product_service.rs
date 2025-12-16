@@ -1,5 +1,5 @@
 use crate::api::response::{CategoryResponse, ProductResponse};
-use crate::data::models::product::{NewProduct, Product, UpdateProduct};
+use crate::data::models::product::{NewProduct, UpdateProduct};
 use crate::data::models::user_roles::RolePermissions;
 use crate::data::repos::implementors::product_category_repo::ProductCategoryRepo;
 use crate::data::repos::implementors::product_repo::ProductRepo;

@@ -7,6 +7,7 @@ use axum::Json;
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use crate::services::product_category_service::ProductCategoryService;
 
 // NOTE: All routes except get_all should only be accessible by admin users.
 /// Get all products
@@ -64,6 +65,7 @@ pub async fn create_product(
     Json(payload): Json<CreateProductRequest>,
 ) -> impl IntoResponse {
     let service = ProductService::new();
+    let product_category_service = ProductCategoryService::new();
     let roles = claims.roles.unwrap_or_default();
 
     if roles.is_empty() {
@@ -81,7 +83,24 @@ pub async fn create_product(
             )
             .await
         {
-            Ok(_) => return (StatusCode::CREATED, "Product created").into_response(),
+            Ok(_) => {
+                return if product_category_service
+                    .add_product_to_categories(
+                        role_id as i32,
+                        &payload.name,
+                        payload.categories.unwrap_or_default()
+                    )
+                    .await.is_ok() {
+                    (StatusCode::CREATED, "Product created").into_response()
+                } else {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to assign categories to product",
+                    )
+                        .into_response()
+                }
+
+            },
             Err(ProductServiceError::PermissionDenied) => continue,
             Err(ProductServiceError::ProductAlreadyExists) => {
                 return (StatusCode::CONFLICT, "Product already exists").into_response();
@@ -113,18 +132,59 @@ pub async fn update_product(
     }
 
     for role_id in roles {
-        match service
-            .update_product(
-                product_id,
-                payload.name.as_deref(),
-                payload.description.as_deref(),
-                payload.price.clone(),
-                payload.product_image_uri.as_deref(),
-                role_id as i32,
-            )
-            .await
-        {
-            Ok(_) => return (StatusCode::OK, "Product updated").into_response(),
+        let has_product_updates = payload.name.is_some()
+            || payload.description.is_some()
+            || payload.price.is_some()
+            || payload.product_image_uri.is_some();
+
+        let update_result = if has_product_updates {
+            service
+                .update_product(
+                    product_id,
+                    payload.name.as_deref(),
+                    payload.description.as_deref(),
+                    payload.price.clone(),
+                    payload.product_image_uri.as_deref(),
+                    role_id as i32,
+                )
+                .await
+        } else {
+            Ok(())
+        };
+
+        match update_result {
+            Ok(_) => return if let Some(categories) = payload.categories {
+                let product_category_service = ProductCategoryService::new();
+                
+                let name = if let Some(n) = payload.name {
+                    n
+                } else {
+                     match service.get_product_by_id(product_id, role_id as i32).await {
+                        Ok(Some(p)) => p.name,
+                        _ => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve product details").into_response(),
+                     }
+                };
+
+                if product_category_service
+                    .update_product_categories(
+                        role_id as i32,
+                        &name,
+                        categories,
+                    )
+                    .await
+                    .is_ok()
+                {
+                    (StatusCode::OK, "Product updated").into_response()
+                } else {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to update product categories",
+                    )
+                        .into_response()
+                }
+            } else {
+                (StatusCode::OK, "Product updated").into_response()
+            },
             Err(ProductServiceError::PermissionDenied) => continue,
             Err(ProductServiceError::ProductNotFound) => {
                 return (StatusCode::NOT_FOUND, "Product not found").into_response();

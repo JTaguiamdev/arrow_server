@@ -78,6 +78,37 @@ impl ProductCategoryRepo {
             Err(e) => Err(e),
         }
     }
+
+    pub async fn delete_by_product_id(&self, product_id: i32) -> Result<(), result::Error> {
+        use crate::data::models::schema::product_categories::dsl::{
+            product_categories, product_id as pc_product_id,
+        };
+
+        let db = Database::new().await;
+
+        let mut conn = db.get_connection().await.map_err(|e| {
+            result::Error::DatabaseError(
+                result::DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string()),
+            )
+        })?;
+        
+        match conn
+            .transaction(|connection| {
+                async move {
+                    diesel::delete(product_categories.filter(pc_product_id.eq(product_id)))
+                        .execute(connection)
+                        .await?;
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 #[async_trait]

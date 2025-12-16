@@ -1,7 +1,7 @@
 use diesel::result::{DatabaseErrorKind, Error};
 use crate::api::request::{AssignCategoryRequest, CreateCategoryRequest, UpdateCategoryRequest};
 use crate::api::response::{CategoryResponse, ProductResponse};
-use crate::data::models::categories::{Category, NewCategory, UpdateCategory};
+use crate::data::models::categories::{NewCategory, UpdateCategory};
 use crate::data::models::product_category::NewProductCategory;
 use crate::data::models::user_roles::RolePermissions;
 use crate::data::repos::implementors::category_repo::CategoryRepo;
@@ -131,7 +131,86 @@ impl ProductCategoryService {
             .await
             .map_err(|_| ProductCategoryServiceError::DatabaseError)
     }
-    
+
+    pub async fn add_product_to_categories(&self, role_id: i32, product_name: &str, category_names: Vec<String>) -> Result<(), ProductCategoryServiceError> {
+        if !self.has_permission(role_id, RolePermissions::Write).await?
+            && !self.has_permission(role_id, RolePermissions::Admin).await?
+        {
+            Err(ProductCategoryServiceError::PermissionDenied)?
+        }
+
+        let product_repo = ProductRepo::new();
+        let category_repo = CategoryRepo::new();
+        let product_category_repo = ProductCategoryRepo::new();
+
+        let product = product_repo
+            .get_by_name(product_name)
+            .await
+            .map_err(|_| ProductCategoryServiceError::DatabaseError)?
+            .ok_or(ProductCategoryServiceError::ProductNotFound)?;
+
+        for category_name in category_names {
+            let category = category_repo
+                .get_by_name(&*category_name)
+                .await
+                .map_err(|_| ProductCategoryServiceError::DatabaseError)?
+                .ok_or(ProductCategoryServiceError::CategoryNotFound)?;
+
+            let new_product_category = NewProductCategory {
+                product_id: &product.product_id,
+                category_id: &category.category_id,
+            };
+
+            product_category_repo.add(new_product_category)
+                .await
+                .map_err(|_| ProductCategoryServiceError::DatabaseError)?;
+        }
+        Ok(())
+    }
+
+    pub async fn remove_product_from_categories(
+        &self,
+        role_id: i32,
+        product_name: &str,
+    ) -> Result<(), ProductCategoryServiceError> {
+        if !self.has_permission(role_id, RolePermissions::Write).await?
+            && !self.has_permission(role_id, RolePermissions::Admin).await?
+        {
+            Err(ProductCategoryServiceError::PermissionDenied)?
+        }
+
+        let product_repo = ProductRepo::new();
+        let product_category_repo = ProductCategoryRepo::new();
+
+        let product = product_repo
+            .get_by_name(product_name)
+            .await
+            .map_err(|_| ProductCategoryServiceError::DatabaseError)?
+            .ok_or(ProductCategoryServiceError::ProductNotFound)?;
+
+        product_category_repo
+            .delete_by_product_id(product.product_id)
+            .await
+            .map_err(|_| ProductCategoryServiceError::DatabaseError)
+    }
+
+    pub async fn update_product_categories(
+        &self,
+        role_id: i32,
+        product_name: &str,
+        category_names: Vec<String>,
+    ) -> Result<(), ProductCategoryServiceError> {
+        if !self.has_permission(role_id, RolePermissions::Write).await?
+            && !self.has_permission(role_id, RolePermissions::Admin).await?
+        {
+            Err(ProductCategoryServiceError::PermissionDenied)?
+        }
+
+        self.remove_product_from_categories(role_id, product_name).await?;
+
+        self.add_product_to_categories(role_id, product_name, category_names).await
+    }
+
     pub async fn edit_category(
         &self,
         role_id: i32,

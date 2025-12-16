@@ -7,6 +7,7 @@ pub struct CreateProductRequest {
     pub description: Option<String>,
     pub price: BigDecimal,
     pub product_image_uri: Option<String>,
+    pub categories: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -15,6 +16,7 @@ pub struct UpdateProductRequest {
     pub description: Option<String>,
     pub price: Option<BigDecimal>,
     pub product_image_uri: Option<String>,
+    pub categories: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
