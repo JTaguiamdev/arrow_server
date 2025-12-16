@@ -228,6 +228,41 @@ async fn test_get_orders_by_user_id_not_found() {
     );
 }
 
+async fn create_test_role(role_name: &str, user_id: i32) {
+   let repo = arrow_server_lib::data::repos::implementors::user_role_repo::UserRoleRepo::new();
+   let new_role = arrow_server_lib::data::models::user_roles::NewUserRole {
+       user_id,
+       name: role_name,
+       description: None
+   };
+   repo.add(new_role).await.expect("Failed to add role");
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_get_orders_by_role_name() {
+    setup().await.expect("Setup failed");
+    let user_id = create_test_user().await;
+    create_test_role("Customer", user_id).await;
+    
+    let product_id = create_test_product().await;
+    let repo = OrderRepo::new();
+    
+    repo.add(NewOrder {
+        user_id,
+        product_id,
+        quantity: 1,
+        total_amount: BigDecimal::from_str("10.00").unwrap(),
+        status: Some("pending".to_string()),
+    }).await.expect("Failed to add order");
+    
+    let orders = repo.get_orders_by_role_name("Customer").await.expect("Failed query").expect("No orders");
+    assert_eq!(orders.len(), 1);
+    
+    let orders_none = repo.get_orders_by_role_name("Admin").await.expect("Failed query");
+    assert!(orders_none.is_none());
+}
+
 #[tokio::test]
 #[serial_test::serial]
 async fn test_get_orders_by_status() {

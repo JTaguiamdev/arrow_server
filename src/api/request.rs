@@ -34,19 +34,19 @@ pub struct UpdateOrderStatusRequest {
     pub status: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct CreateCategoryRequest {
     pub name: String,
     pub description: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct UpdateCategoryRequest {
     pub name: Option<String>,
     pub description: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct AssignCategoryRequest {
     pub category: String,
     pub product: String,

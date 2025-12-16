@@ -1,5 +1,6 @@
 use diesel::result::{DatabaseErrorKind, Error};
-use crate::api::response::CategoryResponse;
+use crate::api::request::{AssignCategoryRequest, CreateCategoryRequest, UpdateCategoryRequest};
+use crate::api::response::{CategoryResponse, ProductResponse};
 use crate::data::models::categories::{Category, NewCategory, UpdateCategory};
 use crate::data::models::product_category::NewProductCategory;
 use crate::data::models::user_roles::RolePermissions;
@@ -55,12 +56,11 @@ impl ProductCategoryService {
             Ok(res)
         }
     }
-
+    
     pub async fn add_category(
         &self,
         role_id: i32,
-        name: &str,
-        description: Option<&str>,
+        request: CreateCategoryRequest,
     ) -> Result<i32, ProductCategoryServiceError> {
         if !self.has_permission(role_id, RolePermissions::Write).await?
             && !self.has_permission(role_id, RolePermissions::Admin).await?
@@ -70,13 +70,13 @@ impl ProductCategoryService {
 
         let repo = CategoryRepo::new();
 
-        let new_category = NewCategory { name, description };
+        let new_category = NewCategory::from(&request);
 
         repo.add(new_category)
             .await
             .map_err(|_| ProductCategoryServiceError::DatabaseError)?;
 
-        repo.get_by_name(name)
+        repo.get_by_name(&request.name)
             .await
             .map(|c| match c {
                 Some(c) => c.category_id,
@@ -92,12 +92,11 @@ impl ProductCategoryService {
             })
             .map_err(|_| ProductCategoryServiceError::CategoryNotFound)
     }
-
+    
     pub async fn add_product_to_category(
         &self,
         role_id: i32,
-        category_name: &str,
-        product_name: &str,
+        request: AssignCategoryRequest,
     ) -> Result<(), ProductCategoryServiceError> {
         if !self.has_permission(role_id, RolePermissions::Write).await?
             && !self.has_permission(role_id, RolePermissions::Admin).await?
@@ -110,13 +109,13 @@ impl ProductCategoryService {
         let product_category_repo = ProductCategoryRepo::new();
 
         let product = product_repo
-            .get_by_name(product_name)
+            .get_by_name(&request.product)
             .await
             .map_err(|_| ProductCategoryServiceError::DatabaseError)?
             .ok_or(ProductCategoryServiceError::ProductNotFound)?;
 
         let category = category_repo
-            .get_by_name(category_name)
+            .get_by_name(&request.category)
             .await
             .map_err(|_| ProductCategoryServiceError::DatabaseError)?
             .ok_or(ProductCategoryServiceError::CategoryNotFound)?;
@@ -130,13 +129,12 @@ impl ProductCategoryService {
             .await
             .map_err(|_| ProductCategoryServiceError::DatabaseError)
     }
-
+    
     pub async fn edit_category(
         &self,
         role_id: i32,
         category_id: i32,
-        name: Option<&str>,
-        description: Option<&str>,
+        request: UpdateCategoryRequest,
     ) -> Result<(), ProductCategoryServiceError> {
         if !self.has_permission(role_id, RolePermissions::Write).await?
             && !self.has_permission(role_id, RolePermissions::Admin).await?
@@ -146,7 +144,7 @@ impl ProductCategoryService {
 
         let repo = CategoryRepo::new();
 
-        let updated_category = UpdateCategory { name, description };
+        let updated_category = UpdateCategory::from(&request);
 
         repo.update(category_id, updated_category)
             .await
@@ -171,7 +169,29 @@ impl ProductCategoryService {
             .map_err(|_| ProductCategoryServiceError::DatabaseError)
     }
     
-    // TODO: Read operations for categories and product-category relationships
+    pub async fn get_products_by_category(
+        &self,
+        role_id: i32,
+        category_id: i32,
+    ) -> Result<Option<Vec<ProductResponse>>, ProductCategoryServiceError> {
+        if !self.has_permission(role_id, RolePermissions::Read).await?
+            && !self.has_permission(role_id, RolePermissions::Admin).await?
+        {
+            Err(ProductCategoryServiceError::PermissionDenied)?
+        }
+
+        let repo = ProductCategoryRepo::new();
+
+        let products = repo.get_products_by_category_id(category_id)
+            .await
+            .map_err(|_| ProductCategoryServiceError::DatabaseError)?;
+
+         Ok(products.map(|prods| {
+            prods.into_iter()
+                .map(|p| p.into())
+                .collect()
+        }))
+    }
 
     pub async fn remove_product_from_category(
         &self,

@@ -3,10 +3,16 @@ use arrow_server_lib::data::repos::implementors::category_repo::CategoryRepo;
 use arrow_server_lib::data::repos::traits::repository::Repository;
 
 #[tokio::test]
+#[serial_test::serial]
 async fn test_category_repo_crud() {
     let repo = CategoryRepo::new();
     let name = "Test Category";
     let description = "This is a test category";
+
+    // Cleanup
+    if let Ok(Some(cat)) = repo.get_by_name(name).await {
+        repo.delete(cat.category_id).await.ok();
+    }
 
     // 1. Create
     let new_category = NewCategory {

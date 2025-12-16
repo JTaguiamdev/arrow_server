@@ -26,7 +26,7 @@ pub async fn get_categories(claims: AccessClaims) -> impl IntoResponse {
         }
     }
     
-    StatusCode::NOT_FOUND.into_response()
+    (StatusCode::FORBIDDEN, "Permission denied").into_response()
 }
 
 pub async fn add_category(
@@ -40,8 +40,9 @@ pub async fn add_category(
         return (StatusCode::FORBIDDEN, "Permission denied").into_response();
     }
     
-    for role in claims.roles.unwrap() { // Verify if unwrap is safe here
-        match service.add_category(role as i32, &payload.name, payload.description.as_deref()).await {
+    for role in claims.roles.unwrap() {
+        // Clone payload because we might iterate
+        match service.add_category(role as i32, payload.clone()).await {
             Ok(_) => {
                 tracing::info!("Added category {}", payload.name);
                 return (StatusCode::CREATED, "Category added successfully").into_response();
@@ -70,7 +71,7 @@ pub async fn edit_category(
     }
 
     for role in claims.roles.unwrap() {
-        match service.edit_category(role as i32, category_id, payload.name.as_deref(), payload.description.as_deref()).await {
+        match service.edit_category(role as i32, category_id, payload.clone()).await {
             Ok(_) => {
                 tracing::info!("Edited category {}", category_id);
                 return (StatusCode::CREATED, "Category edited successfully").into_response();
@@ -98,7 +99,7 @@ pub async fn add_product_to_category(
     }
 
     for role in claims.roles.unwrap() {
-        match service.add_product_to_category(role as i32, &*payload.category, &*payload.product).await {
+        match service.add_product_to_category(role as i32, payload.clone()).await {
             Ok(_) => {
                 tracing::info!("Assigned product {} to category {}", payload.product, payload.category);
                 return (StatusCode::CREATED, "Product assigned to category successfully").into_response();
@@ -114,8 +115,88 @@ pub async fn add_product_to_category(
     (StatusCode::FORBIDDEN, "Permission denied").into_response()
 }
 
-// TODO: Implement delete_category controller function
-// TODO: Implement remove_product_from_category controller function
-// TODO: Implement get_products_by_category controller function
+pub async fn delete_category(
+    claims: AccessClaims,
+    Path(category_id): Path<i32>,
+) -> impl IntoResponse {
+    let service = ProductCategoryService::new();
+
+    if claims.roles.is_none() {
+        tracing::error!("Roles is none");
+        return (StatusCode::FORBIDDEN, "Permission denied").into_response();
+    }
+
+    for role in claims.roles.unwrap() {
+        match service.delete_category(role as i32, category_id).await {
+            Ok(_) => {
+                tracing::info!("Deleted category {}", category_id);
+                return (StatusCode::OK, "Category deleted successfully").into_response();
+            },
+            Err(ProductCategoryServiceError::PermissionDenied) => continue,
+            Err(_) => {
+                tracing::error!("Failed to delete category {}", category_id);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
+            }
+        }
+    }
+
+    (StatusCode::FORBIDDEN, "Permission denied").into_response()
+}
+
+pub async fn remove_product_from_category(
+    claims: AccessClaims,
+    Json(payload): Json<AssignCategoryRequest>
+) -> impl IntoResponse {
+    let service = ProductCategoryService::new();
+
+    if claims.roles.is_none() {
+        tracing::error!("Roles is none");
+        return (StatusCode::FORBIDDEN, "Permission denied").into_response();
+    }
+
+    for role in claims.roles.unwrap() {
+        match service.remove_product_from_category(role as i32, &payload.category, &payload.product).await {
+            Ok(_) => {
+                tracing::info!("Removed product {} from category {}", payload.product, payload.category);
+                return (StatusCode::OK, "Product removed from category successfully").into_response();
+            },
+            Err(ProductCategoryServiceError::PermissionDenied) => continue,
+            Err(_) => {
+                tracing::error!("Failed to remove product {} from category {}", payload.product, payload.category);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
+            }
+        }
+    }
+
+    (StatusCode::FORBIDDEN, "Permission denied").into_response()
+}
+
+pub async fn get_products_by_category(
+    claims: AccessClaims,
+    Path(category_id): Path<i32>,
+) -> impl IntoResponse {
+    let service = ProductCategoryService::new();
+
+    if claims.roles.is_none() {
+        tracing::error!("Roles is none");
+        return (StatusCode::FORBIDDEN, "Permission denied").into_response();
+    }
+
+    for role in claims.roles.unwrap() {
+        match service.get_products_by_category(role as i32, category_id).await {
+            Ok(products) => {
+                return (StatusCode::OK, Json(products)).into_response();
+            },
+            Err(ProductCategoryServiceError::PermissionDenied) => continue,
+            Err(_) => {
+                tracing::error!("Failed to get products for category {}", category_id);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
+            }
+        }
+    }
+
+    (StatusCode::FORBIDDEN, "Permission denied").into_response()
+}
+
 // TODO: Generate tests and put them in tests/api/controllers/category_controller_tests.rs
 // TODO: Edit ProductResponse to include categories

@@ -70,6 +70,49 @@ impl OrderRepo {
             Err(e) => Err(e),
         }
     }
+    
+    /// Retrieves all orders for users with a specific role name.
+    pub async fn get_orders_by_role_name(
+        &self,
+        role: &str,
+    ) -> Result<Option<Vec<Order>>, result::Error> {
+        use crate::data::models::schema::orders::dsl::{orders, user_id};
+        use crate::data::models::schema::user_roles::dsl::{user_roles, name, user_id as role_user_id};
+
+        let db = Database::new().await;
+
+        let mut conn: Object<AsyncMysqlConnection> = db.get_connection().await.map_err(|e| {
+            result::Error::DatabaseError(
+                result::DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string()),
+            )
+        })?;
+        
+        // Find user_ids with the given role
+        let user_ids = user_roles
+            .filter(name.eq(role))
+            .select(role_user_id)
+            .load::<Option<i32>>(&mut conn)
+            .await?;
+            
+        // Filter out Nones and unwrap
+        let user_ids: Vec<i32> = user_ids.into_iter().flatten().collect();
+        
+        if user_ids.is_empty() {
+            return Ok(None);
+        }
+
+        match orders
+            .filter(user_id.eq_any(user_ids))
+            .load::<Order>(&mut conn)
+            .await
+        {
+            Ok(value) if value.is_empty() => Ok(None),
+            Ok(value) => Ok(Some(value)),
+            Err(result::Error::NotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 #[async_trait]

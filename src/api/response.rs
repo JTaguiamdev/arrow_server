@@ -29,6 +29,7 @@ pub struct ProductResponse {
     pub description: Option<String>,
     pub price: BigDecimal,
     pub product_image_uri: Option<String>,
+    pub categories: Option<Vec<CategoryResponse>>,
 }
 
 #[skip_serializing_none]

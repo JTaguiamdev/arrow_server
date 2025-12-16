@@ -1,0 +1,22 @@
+meta {
+  name: Remove Product from Category
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://127.0.0.1:3000/api/v1/categories/product/remove
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "category": "Electronics",
+    "product": "Smartphone"
+  }
+}

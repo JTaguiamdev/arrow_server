@@ -1,0 +1,22 @@
+meta {
+  name: Edit Category
+  type: http
+  seq: 3
+}
+
+put {
+  url: http://127.0.0.1:3000/api/v1/categories/1
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Updated Electronics",
+    "description": "Updated description"
+  }
+}

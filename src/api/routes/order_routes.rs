@@ -12,4 +12,8 @@ pub fn routes() -> Router {
             "/user/{username}",
             get(order_controller::get_user_orders_by_name),
         )
+        .route(
+            "/role/{role_name}",
+            get(order_controller::get_orders_by_role),
+        )
 }

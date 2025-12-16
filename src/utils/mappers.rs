@@ -160,6 +160,7 @@ impl From<Product> for ProductResponse {
             description: product.description,
             price: product.price,
             product_image_uri: product.product_image_uri,
+            categories: None,
         }
     }
 }

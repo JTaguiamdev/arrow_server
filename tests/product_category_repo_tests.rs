@@ -9,6 +9,7 @@ use bigdecimal::BigDecimal;
 use std::str::FromStr;
 
 #[tokio::test]
+#[serial_test::serial]
 async fn test_product_category_repo_crud() {
     let product_repo = ProductRepo::new();
     let category_repo = CategoryRepo::new();
@@ -72,6 +73,15 @@ async fn test_product_category_repo_crud() {
     assert!(all_links.is_some());
     let all_links = all_links.unwrap();
     assert!(all_links.iter().any(|pc| pc.product_id == product.product_id && pc.category_id == category.category_id));
+
+    // 4.5 Check get_products_by_category_id
+    let products = product_category_repo
+        .get_products_by_category_id(category.category_id)
+        .await
+        .expect("Failed to get products by category")
+        .expect("Products not found");
+    assert_eq!(products.len(), 1);
+    assert_eq!(products[0].name, product_name);
 
     // 5. Delete
     let delete_result = product_category_repo

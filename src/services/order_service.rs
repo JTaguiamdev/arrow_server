@@ -212,6 +212,24 @@ impl OrderService {
             .await
             .map_err(|_| OrderServiceError::DatabaseError)
     }
+    
+    /// Gets orders by role (READ or ADMIN permission required)
+    pub async fn get_orders_by_role(
+        &self,
+        role_name: &str,
+        role_id: i32,
+    ) -> Result<Option<Vec<Order>>, OrderServiceError> {
+        if !self.has_permission(role_id, RolePermissions::Read).await?
+            && !self.has_permission(role_id, RolePermissions::Admin).await?
+        {
+            return Err(OrderServiceError::PermissionDenied);
+        }
+
+        let repo = OrderRepo::new();
+        repo.get_orders_by_role_name(role_name)
+            .await
+            .map_err(|_| OrderServiceError::DatabaseError)
+    }
 
     /// Deletes an order
     pub async fn delete_order(&self, order_id: i32, role_id: i32) -> Result<(), OrderServiceError> {

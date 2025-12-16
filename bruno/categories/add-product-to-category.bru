@@ -1,0 +1,22 @@
+meta {
+  name: Add Product to Category
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://127.0.0.1:3000/api/v1/categories/product
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "category": "Electronics",
+    "product": "Smartphone"
+  }
+}

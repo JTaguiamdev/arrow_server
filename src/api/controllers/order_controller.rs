@@ -13,7 +13,36 @@ use axum::response::IntoResponse;
 use bigdecimal::BigDecimal;
 use bigdecimal::FromPrimitive;
 use std::str::FromStr;
-// TODO: Add get orders by role route which returns all orders of users with a specific role returns a list of orders filtered by role
+
+/// Get orders by role
+pub async fn get_orders_by_role(
+    claims: AccessClaims,
+    Path(role_name): Path<String>,
+) -> impl IntoResponse {
+    let service = OrderService::new();
+    let roles = claims.roles.unwrap_or_default();
+
+    if roles.is_empty() {
+        return (StatusCode::FORBIDDEN, "Permission denied").into_response();
+    }
+
+    for role_id in roles {
+        match service.get_orders_by_role(&role_name, role_id as i32).await {
+            Ok(orders) => {
+                 let response: Vec<OrderResponse> = orders
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(OrderResponse::from)
+                    .collect();
+                return (StatusCode::OK, Json(response)).into_response();
+            },
+            Err(OrderServiceError::PermissionDenied) => continue,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response(),
+        }
+    }
+
+    (StatusCode::FORBIDDEN, "Permission denied").into_response()
+}
 
 /// Get all orders
 pub async fn get_all_orders(claims: AccessClaims) -> impl IntoResponse {

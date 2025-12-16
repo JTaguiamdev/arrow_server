@@ -14,6 +14,38 @@ impl ProductCategoryRepo {
     pub fn new() -> Self {
         ProductCategoryRepo
     }
+
+    pub async fn get_products_by_category_id(
+        &self,
+        id: i32,
+    ) -> Result<Option<Vec<crate::data::models::product::Product>>, result::Error> {
+        use crate::data::models::schema::product_categories::dsl::{
+            category_id, product_categories,
+        };
+        use crate::data::models::schema::products::dsl::products;
+
+        let db = Database::new().await;
+
+        let mut conn: Object<AsyncMysqlConnection> = db.get_connection().await.map_err(|e| {
+            result::Error::DatabaseError(
+                result::DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string()),
+            )
+        })?;
+
+        match product_categories
+            .filter(category_id.eq(id))
+            .inner_join(products)
+            .select(crate::data::models::product::Product::as_select())
+            .load::<crate::data::models::product::Product>(&mut conn)
+            .await
+        {
+            Ok(value) if value.is_empty() => Ok(None),
+            Ok(value) => Ok(Some(value)),
+            Err(result::Error::NotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 #[async_trait]
