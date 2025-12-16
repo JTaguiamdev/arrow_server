@@ -14,8 +14,8 @@ use diesel::{deserialize, serialize};
 use std::io::Write;
 use std::str::FromStr;
 use crate::api::request::{CreateCategoryRequest, UpdateCategoryRequest};
-use crate::api::response::{OrderResponse, ProductResponse};
-use crate::data::models::categories::{NewCategory, UpdateCategory};
+use crate::api::response::{CategoryResponse, OrderResponse, ProductResponse};
+use crate::data::models::categories::{Category, NewCategory, UpdateCategory};
 use crate::data::models::order::Order;
 use crate::data::models::product::{Product};
 
@@ -160,6 +160,18 @@ impl From<Product> for ProductResponse {
             description: product.description,
             price: product.price,
             product_image_uri: product.product_image_uri,
+        }
+    }
+}
+
+impl From<Category> for CategoryResponse {
+    fn from(category: Category) -> Self {
+        Self {
+            category_id: Some(category.category_id),
+            name: category.name,
+            description: category.description,
+            created_at: category.created_at.map(|d| d.to_string()),
+            updated_at: category.updated_at.map(|d| d.to_string()),
         }
     }
 }

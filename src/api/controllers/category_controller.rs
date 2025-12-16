@@ -2,7 +2,7 @@ use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::Json;
 use axum::response::IntoResponse;
-use crate::api::request::{CreateCategoryRequest, UpdateCategoryRequest};
+use crate::api::request::{AssignCategoryRequest, CreateCategoryRequest, UpdateCategoryRequest};
 use crate::security::jwt::AccessClaims;
 use crate::services::errors::ProductCategoryServiceError;
 use crate::services::product_category_service::ProductCategoryService;
@@ -88,7 +88,34 @@ pub async fn edit_category(
 
 pub async fn add_product_to_category(
     claims: AccessClaims,
-    Json(payload):
+    Json(payload): Json<AssignCategoryRequest>
 ) -> impl IntoResponse {
+    let service = ProductCategoryService::new();
 
+    if claims.roles.is_none() {
+        tracing::error!("Roles is none");
+        return (StatusCode::FORBIDDEN, "Permission denied").into_response();
+    }
+
+    for role in claims.roles.unwrap() {
+        match service.add_product_to_category(role as i32, &*payload.category, &*payload.product).await {
+            Ok(_) => {
+                tracing::info!("Assigned product {} to category {}", payload.product, payload.category);
+                return (StatusCode::CREATED, "Product assigned to category successfully").into_response();
+            },
+            Err(ProductCategoryServiceError::PermissionDenied) => continue,
+            Err(_) => {
+                tracing::error!("Failed to assign product {} to category {}", payload.product, payload.category);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
+            }
+        }
+    }
+
+    (StatusCode::FORBIDDEN, "Permission denied").into_response()
 }
+
+// TODO: Implement delete_category controller function
+// TODO: Implement remove_product_from_category controller function
+// TODO: Implement get_products_by_category controller function
+// TODO: Generate tests and put them in tests/api/controllers/category_controller_tests.rs
+// TODO: Edit ProductResponse to include categories

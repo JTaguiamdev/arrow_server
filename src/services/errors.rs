@@ -83,6 +83,7 @@ pub enum ProductCategoryServiceError {
     CategoryDeletionFailed,
     PermissionDenied,
     DatabaseError,
+    ProductNotFound,
 }
 
 impl std::error::Error for ProductCategoryServiceError {}
@@ -102,6 +103,7 @@ impl std::fmt::Display for ProductCategoryServiceError {
             }
             ProductCategoryServiceError::PermissionDenied => write!(f, "Permission denied"),
             ProductCategoryServiceError::DatabaseError => write!(f, "Database error"),
+            ProductCategoryServiceError::ProductNotFound => write!(f, "Product not found"),
         }
     }
 }
