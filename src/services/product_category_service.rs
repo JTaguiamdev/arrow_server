@@ -1,4 +1,5 @@
-use crate::data::models::categories::{NewCategory, UpdateCategory};
+use diesel::result::Error;
+use crate::data::models::categories::{Category, NewCategory, UpdateCategory};
 use crate::data::models::product_category::NewProductCategory;
 use crate::data::models::user_roles::RolePermissions;
 use crate::data::repos::implementors::category_repo::CategoryRepo;
@@ -13,13 +14,29 @@ impl ProductCategoryService {
     pub fn new() -> Self {
         ProductCategoryService {}
     }
+    
+    pub async fn get_categories(&self, role_id: i32) -> Result<(), ProductCategoryServiceError>{
+        if !self.has_permission(role_id, RolePermissions::Read).await?
+            && !self.has_permission(role_id, RolePermissions::Admin).await?
+        {
+            Err(ProductCategoryServiceError::PermissionDenied)?
+        }
+
+        let repo = CategoryRepo::new();
+
+        repo.get_all()
+            .await
+            .map_err(|_| ProductCategoryServiceError::DatabaseError)?;
+        
+        Ok(())
+    }
 
     pub async fn add_category(
         &self,
         role_id: i32,
         name: &str,
         description: Option<&str>,
-    ) -> Result<(), ProductCategoryServiceError> {
+    ) -> Result<i32, ProductCategoryServiceError> {
         if !self.has_permission(role_id, RolePermissions::Write).await?
             && !self.has_permission(role_id, RolePermissions::Admin).await?
         {
@@ -32,6 +49,19 @@ impl ProductCategoryService {
 
         repo.add(new_category)
             .await
+            .map_err(|_| ProductCategoryServiceError::DatabaseError);
+
+        repo.get_by_name(name)
+            .await
+            .map(|c| match c {
+                Some(c) => c.category_id,
+                None => -1 // Make this an error
+            })
+            .and_then(|v| if v == -1 {
+                Err(Error::DatabaseError(Data)) // FIXME
+            } else {
+                Ok(v)
+            })
             .map_err(|_| ProductCategoryServiceError::DatabaseError)
     }
 
