@@ -29,13 +29,13 @@ pub async fn get_orders_by_role(
     for role_id in roles {
         match service.get_orders_by_role(&role_name, role_id as i32).await {
             Ok(orders) => {
-                 let response: Vec<OrderResponse> = orders
+                let response: Vec<OrderResponse> = orders
                     .unwrap_or_default()
                     .into_iter()
                     .map(OrderResponse::from)
                     .collect();
                 return (StatusCode::OK, Json(response)).into_response();
-            },
+            }
             Err(OrderServiceError::PermissionDenied) => continue,
             Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response(),
         }

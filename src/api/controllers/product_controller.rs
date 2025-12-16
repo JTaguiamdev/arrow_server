@@ -2,12 +2,12 @@ use crate::api::request::{CreateProductRequest, UpdateProductRequest};
 use crate::api::response::ProductResponse;
 use crate::security::jwt::AccessClaims;
 use crate::services::errors::ProductServiceError;
+use crate::services::product_category_service::ProductCategoryService;
 use crate::services::product_service::ProductService;
 use axum::Json;
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use crate::services::product_category_service::ProductCategoryService;
 
 // NOTE: All routes except get_all should only be accessible by admin users.
 /// Get all products
@@ -88,9 +88,11 @@ pub async fn create_product(
                     .add_product_to_categories(
                         role_id as i32,
                         &payload.name,
-                        payload.categories.unwrap_or_default()
+                        payload.categories.unwrap_or_default(),
                     )
-                    .await.is_ok() {
+                    .await
+                    .is_ok()
+                {
                     (StatusCode::CREATED, "Product created").into_response()
                 } else {
                     (
@@ -98,9 +100,8 @@ pub async fn create_product(
                         "Failed to assign categories to product",
                     )
                         .into_response()
-                }
-
-            },
+                };
+            }
             Err(ProductServiceError::PermissionDenied) => continue,
             Err(ProductServiceError::ProductAlreadyExists) => {
                 return (StatusCode::CONFLICT, "Product already exists").into_response();
@@ -153,38 +154,42 @@ pub async fn update_product(
         };
 
         match update_result {
-            Ok(_) => return if let Some(categories) = payload.categories {
-                let product_category_service = ProductCategoryService::new();
-                
-                let name = if let Some(n) = payload.name {
-                    n
-                } else {
-                     match service.get_product_by_id(product_id, role_id as i32).await {
-                        Ok(Some(p)) => p.name,
-                        _ => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve product details").into_response(),
-                     }
-                };
+            Ok(_) => {
+                return if let Some(categories) = payload.categories {
+                    let product_category_service = ProductCategoryService::new();
 
-                if product_category_service
-                    .update_product_categories(
-                        role_id as i32,
-                        &name,
-                        categories,
-                    )
-                    .await
-                    .is_ok()
-                {
-                    (StatusCode::OK, "Product updated").into_response()
+                    let name = if let Some(n) = payload.name {
+                        n
+                    } else {
+                        match service.get_product_by_id(product_id, role_id as i32).await {
+                            Ok(Some(p)) => p.name,
+                            _ => {
+                                return (
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    "Failed to retrieve product details",
+                                )
+                                    .into_response();
+                            }
+                        }
+                    };
+
+                    if product_category_service
+                        .update_product_categories(role_id as i32, &name, categories)
+                        .await
+                        .is_ok()
+                    {
+                        (StatusCode::OK, "Product updated").into_response()
+                    } else {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "Failed to update product categories",
+                        )
+                            .into_response()
+                    }
                 } else {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Failed to update product categories",
-                    )
-                        .into_response()
-                }
-            } else {
-                (StatusCode::OK, "Product updated").into_response()
-            },
+                    (StatusCode::OK, "Product updated").into_response()
+                };
+            }
             Err(ProductServiceError::PermissionDenied) => continue,
             Err(ProductServiceError::ProductNotFound) => {
                 return (StatusCode::NOT_FOUND, "Product not found").into_response();

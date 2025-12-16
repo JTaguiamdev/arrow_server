@@ -1,4 +1,6 @@
-use crate::api::routes::{auth_routes, category_routes, order_routes, product_routes, role_routes, user_routes};
+use crate::api::routes::{
+    auth_routes, category_routes, order_routes, product_routes, role_routes, user_routes,
+};
 use axum::body::Body;
 use axum::extract::Request;
 use axum::middleware::Next;

@@ -4,12 +4,12 @@ use arrow_server_lib::api::controllers::product_controller::{
 };
 use arrow_server_lib::api::response::ProductResponse;
 use arrow_server_lib::data::database::Database;
-use arrow_server_lib::data::models::product::NewProduct;
 use arrow_server_lib::data::models::categories::NewCategory;
+use arrow_server_lib::data::models::product::NewProduct;
 use arrow_server_lib::data::models::user::NewUser;
 use arrow_server_lib::data::models::user_roles::{NewUserRole, RolePermissions};
-use arrow_server_lib::data::repos::implementors::product_repo::ProductRepo;
 use arrow_server_lib::data::repos::implementors::category_repo::CategoryRepo;
+use arrow_server_lib::data::repos::implementors::product_repo::ProductRepo;
 use arrow_server_lib::data::repos::implementors::user_repo::UserRepo;
 use arrow_server_lib::data::repos::implementors::user_role_repo::UserRoleRepo;
 use arrow_server_lib::data::repos::traits::repository::Repository;
@@ -35,17 +35,19 @@ async fn setup() -> Result<(), result::Error> {
         .await
         .expect("Failed to get a database connection");
 
+    use arrow_server_lib::data::models::schema::categories::dsl::categories;
     use arrow_server_lib::data::models::schema::order_products::dsl::order_products;
     use arrow_server_lib::data::models::schema::orders::dsl::orders;
+    use arrow_server_lib::data::models::schema::product_categories::dsl::product_categories;
     use arrow_server_lib::data::models::schema::products::dsl::products;
     use arrow_server_lib::data::models::schema::user_roles::dsl::user_roles;
     use arrow_server_lib::data::models::schema::users::dsl::users;
-    use arrow_server_lib::data::models::schema::categories::dsl::categories;
-    use arrow_server_lib::data::models::schema::product_categories::dsl::product_categories;
 
     diesel::delete(order_products).execute(&mut conn).await?;
     diesel::delete(orders).execute(&mut conn).await?;
-    diesel::delete(product_categories).execute(&mut conn).await?;
+    diesel::delete(product_categories)
+        .execute(&mut conn)
+        .await?;
     diesel::delete(products).execute(&mut conn).await?;
     diesel::delete(categories).execute(&mut conn).await?;
     diesel::delete(user_roles).execute(&mut conn).await?;
@@ -378,8 +380,12 @@ async fn test_create_product_with_categories() {
 
     // Verify categories
     let repo = ProductRepo::new();
-    let product = repo.get_by_name("Product With Cats").await.unwrap().unwrap();
-    
+    let product = repo
+        .get_by_name("Product With Cats")
+        .await
+        .unwrap()
+        .unwrap();
+
     // We can fetch via endpoint to see if categories are returned
     let app_router2 = app();
     let response = app_router2
@@ -392,11 +398,11 @@ async fn test_create_product_with_categories() {
         )
         .await
         .unwrap();
-    
+
     assert_eq!(response.status(), StatusCode::OK);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let product_resp: ProductResponse = serde_json::from_slice(&body).unwrap();
-    
+
     assert!(product_resp.categories.is_some());
     let cats = product_resp.categories.unwrap();
     assert_eq!(cats.len(), 2);
@@ -449,7 +455,7 @@ async fn test_update_product_categories() {
         )
         .await
         .unwrap();
-    
+
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let product_resp: ProductResponse = serde_json::from_slice(&body).unwrap();
     let cats = product_resp.categories.unwrap();
@@ -474,7 +480,7 @@ async fn test_update_product_categories() {
         )
         .await
         .unwrap();
-    
+
     assert_eq!(response.status(), StatusCode::OK);
 
     // Verify again
@@ -489,7 +495,7 @@ async fn test_update_product_categories() {
         )
         .await
         .unwrap();
-    
+
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let product_resp: ProductResponse = serde_json::from_slice(&body).unwrap();
     let cats = product_resp.categories.unwrap();

@@ -92,7 +92,7 @@ impl ProductCategoryRepo {
                 Box::new(e.to_string()),
             )
         })?;
-        
+
         match conn
             .transaction(|connection| {
                 async move {

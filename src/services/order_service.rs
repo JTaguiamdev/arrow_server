@@ -212,7 +212,7 @@ impl OrderService {
             .await
             .map_err(|_| OrderServiceError::DatabaseError)
     }
-    
+
     /// Gets orders by role (READ or ADMIN permission required)
     pub async fn get_orders_by_role(
         &self,

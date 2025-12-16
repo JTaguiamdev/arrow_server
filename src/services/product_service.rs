@@ -38,7 +38,8 @@ impl ProductService {
                 let mut responses = Vec::new();
                 for p in prods {
                     let mut response = ProductResponse::from(p);
-                    response.categories = self.get_categories_for_product(response.product_id).await?;
+                    response.categories =
+                        self.get_categories_for_product(response.product_id).await?;
                     responses.push(response);
                 }
                 Ok(Some(responses))
@@ -115,11 +116,7 @@ impl ProductService {
             .await
             .map_err(|_| ProductServiceError::DatabaseError)?;
 
-        Ok(categories.map(|cats| {
-            cats.into_iter()
-                .map(CategoryResponse::from)
-                .collect()
-        }))
+        Ok(categories.map(|cats| cats.into_iter().map(CategoryResponse::from).collect()))
     }
 
     /// Creates a new product (requires WRITE permission or Admin)

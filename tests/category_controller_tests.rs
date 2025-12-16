@@ -17,10 +17,10 @@ use arrow_server_lib::data::repos::implementors::user_role_repo::UserRoleRepo;
 use arrow_server_lib::data::repos::traits::repository::Repository;
 use arrow_server_lib::security::auth::AuthService;
 use arrow_server_lib::security::jwt::JwtService;
+use axum::Router;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{delete, get, post, put};
-use axum::Router;
 use bigdecimal::BigDecimal;
 use diesel::result;
 use diesel_async::RunQueryDsl;
@@ -47,7 +47,9 @@ async fn setup() -> Result<(), result::Error> {
 
     diesel::delete(order_products).execute(&mut conn).await?;
     diesel::delete(orders).execute(&mut conn).await?;
-    diesel::delete(product_categories).execute(&mut conn).await?;
+    diesel::delete(product_categories)
+        .execute(&mut conn)
+        .await?;
     diesel::delete(products).execute(&mut conn).await?;
     diesel::delete(categories).execute(&mut conn).await?;
     diesel::delete(user_roles).execute(&mut conn).await?;
@@ -365,7 +367,7 @@ async fn test_remove_product_from_category_success() {
 async fn test_get_products_by_category_name_success() {
     setup().await.expect("Setup failed");
     let (_, token) = create_user_with_role("reader", "pass", "READER", RolePermissions::Read).await;
-    
+
     let cat_id = create_test_category("Electronics").await;
     let prod_id = create_test_product("Laptop", BigDecimal::from(1000)).await;
     assign_product_to_category(prod_id, cat_id).await;
@@ -395,7 +397,7 @@ async fn test_get_products_by_category_name_success() {
 async fn test_get_products_by_category_name_not_found() {
     setup().await.expect("Setup failed");
     let (_, token) = create_user_with_role("reader", "pass", "READER", RolePermissions::Read).await;
-    
+
     let app_router = app();
 
     let response = app_router

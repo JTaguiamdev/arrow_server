@@ -860,8 +860,15 @@ async fn test_get_product_with_categories() {
         name: "TestCategory",
         description: None,
     };
-    category_repo.add(category).await.expect("Failed to add category");
-    let category = category_repo.get_by_name("TestCategory").await.expect("Failed to get").expect("Category not found");
+    category_repo
+        .add(category)
+        .await
+        .expect("Failed to add category");
+    let category = category_repo
+        .get_by_name("TestCategory")
+        .await
+        .expect("Failed to get")
+        .expect("Category not found");
 
     // Link
     let pc_repo = ProductCategoryRepo::new();
@@ -877,7 +884,7 @@ async fn test_get_product_with_categories() {
         .await
         .expect("Failed to get product")
         .expect("Product not found");
-    
+
     assert!(fetched.categories.is_some());
     let cats = fetched.categories.unwrap();
     assert_eq!(cats.len(), 1);

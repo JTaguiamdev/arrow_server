@@ -2,6 +2,11 @@ use crate::api::controllers::dto::{
     role_dto::{RoleDTO, UpdateRoleDTO},
     user_dto::{NewUserDTO, UpdateUserDTO},
 };
+use crate::api::request::{CreateCategoryRequest, UpdateCategoryRequest};
+use crate::api::response::{CategoryResponse, OrderResponse, ProductResponse};
+use crate::data::models::categories::{Category, NewCategory, UpdateCategory};
+use crate::data::models::order::Order;
+use crate::data::models::product::Product;
 use crate::data::models::schema::sql_types::UserRolesPermissionsSet;
 use crate::data::models::user::{NewUser, UpdateUser};
 use crate::data::models::user_roles::{
@@ -13,11 +18,6 @@ use diesel::serialize::{Output, ToSql};
 use diesel::{deserialize, serialize};
 use std::io::Write;
 use std::str::FromStr;
-use crate::api::request::{CreateCategoryRequest, UpdateCategoryRequest};
-use crate::api::response::{CategoryResponse, OrderResponse, ProductResponse};
-use crate::data::models::categories::{Category, NewCategory, UpdateCategory};
-use crate::data::models::order::Order;
-use crate::data::models::product::{Product};
 
 impl<'a> From<&'a NewUserDTO> for NewUser<'a> {
     fn from(user_dto: &'a NewUserDTO) -> Self {
@@ -131,7 +131,7 @@ impl<'a> From<&'a CreateCategoryRequest> for NewCategory<'a> {
 impl<'a> From<&'a UpdateCategoryRequest> for UpdateCategory<'a> {
     fn from(request: &'a UpdateCategoryRequest) -> Self {
         UpdateCategory {
-            name: Option::from(request.name.as_deref()),
+            name: request.name.as_deref(),
             description: request.description.as_deref(),
         }
     }
